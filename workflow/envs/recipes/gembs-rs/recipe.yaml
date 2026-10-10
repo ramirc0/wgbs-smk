@@ -1,0 +1,37 @@
+# bs_call and mextr from gemBS-rs master, unchanged since 2022, as the old
+# Docker image built them. Neither tool is packaged on conda.
+context:
+  version: "4.0.4"
+  rev: 9d2e5e6e27b5f2915dcbeccc657326368b6f996d
+
+package:
+  name: gembs-rs
+  version: ${{ version }}
+
+source:
+  git: https://github.com/heathsc/gemBS-rs.git
+  rev: ${{ rev }}
+
+build:
+  number: 0
+  script:
+    - cd rust
+    # The upstream Makefile generates this manifest. Cargo needs it to load the workspace.
+    - cp gemBS/Cargo.toml.in gemBS/Cargo.toml
+    # r_htslib links -lhts. Upstream passes -L the same way.
+    - export CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS="$CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS -L $PREFIX/lib"
+    - cargo install --locked --no-track --root "$PREFIX" --path bs_call
+    - cargo install --locked --no-track --root "$PREFIX" --path mextr
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ compiler('rust') }}
+  host:
+    - htslib
+    - zlib
+
+about:
+  homepage: https://github.com/heathsc/gemBS-rs
+  license: BSD-3-Clause
+  summary: bs_call and mextr from gemBS-rs.

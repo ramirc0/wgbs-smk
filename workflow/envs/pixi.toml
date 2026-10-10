@@ -1,0 +1,23 @@
+[workspace]
+name = "wgbs-smk-envs"
+channels = ["conda-forge", "bioconda"]
+platforms = ["linux-64"]
+preview = ["pixi-build"]
+
+[dependencies]
+python = "3.12.*"
+polars = "1.*"
+pysam = "*"
+samtools = "*"
+bcftools = "*"
+htslib = "*"
+bedtools = "*"
+seqkit = "2.11.0.*"
+pigz = "*"
+parallel = "*"
+ucsc-bedgraphtobigwig = "*"
+gem3-mapper = { path = "recipes/gem3-mapper", package.build.backend.name = "pixi-build-rattler-build" }
+gembs-rs = { path = "recipes/gembs-rs", package.build.backend.name = "pixi-build-rattler-build" }
+
+[pypi-dependencies]
+qc-utils = "*"
