@@ -7,6 +7,7 @@ the layout, idioms, conventions, and known issues. Follow it.
 
 ```bash
 pixi run lint                                # ruff check, ruff format --check, numpydoc lint
+pixi run test                                # full run in .tests/integration
 pixi run snakemake -n -p --profile profiles/local
 pixi run snakemake --profile profiles/local
 ```
@@ -21,6 +22,7 @@ pixi run snakemake --profile profiles/local
 
 ## Gotchas
 
+- Shell blocks MUST call scripts as `{workflow.basedir:q}/scripts/x.py`. A cwd-relative path breaks `--directory`.
 - `.smk` files are not linted. Keep helper docstrings numpydoc by hand.
 - The read group needs real tab characters. Build it in `read_group()`, never inside an `r"""` shell block.
 - gembs_extract copies back everything in its staging dir. Its `tmpdir` subdir MUST stay apart from the `calls` one.
@@ -32,9 +34,7 @@ pixi run snakemake --profile profiles/local
 
 ## Verifying a change
 
-No test suite. Run the workflow end to end on a toy fixture:
+`pixi run test` runs every rule on the toy data in `.tests/integration/`: every contig in `CONTIGS` plus one alt contig, and two samples of directional bisulfite reads with 80% CpG methylation.
+New rules or inputs MUST get matching test inputs there.
 
-1. Build a small genome with every contig in `CONTIGS` plus one alt contig, and simulated directional bisulfite reads named `MOHD_<id>_R{1,2}.fastq.gz`.
-2. Write `config/config.yaml` and a sample sheet that point at it, then run the local profile.
-3. To check faithfulness, run the same fixture through a `pre-template` worktree and compare the normalized BAM, BCF, bed, and bigWig contents.
-4. Delete the fixture, `results/`, `logs/`, and `benchmarks/`. All are gitignored.
+To check faithfulness, run the same inputs through a `pre-template` worktree and compare the normalized BAM, BCF, bed, and bigWig contents.

@@ -9,6 +9,7 @@ extracts bedMethyl, methylC and bigWig tracks with `mextr`. It follows the
 ## Layout
 
 ```
+.tests/integration/      config + toy inputs for the end-to-end test
 config/
   config.yaml.template   parameters + paths; copy to config.yaml (gitignored)
   samples.example.tsv    one row per sample: sample_id, dataset, fastq_1, fastq_2
@@ -27,7 +28,7 @@ workflow/
 profiles/
   local/config.yaml      local execution
   slurm/config.yaml      SLURM (per-rule resources, retried with more memory)
-pixi.toml                launcher env + lint task
+pixi.toml                launcher env + test and lint tasks
 pyproject.toml           ruff + numpydoc config
 ```
 
@@ -59,6 +60,8 @@ Follow the [Nextstrain Snakemake style guide][style-guide] and
 - Logs tee'd to file and terminal (`exec &> >(tee {log:q})`). The profiles set
   `--show-failed-logs`.
 - Every rule has a `benchmark:`. No `message:` attribute.
+- Scripts are called as `{workflow.basedir:q}/scripts/x.py` so the workflow
+  runs from any `--directory`.
 - Docstrings follow numpydoc. `pixi run lint` checks the scripts with ruff and
   `numpydoc lint`. Neither tool parses `.smk` files.
 
@@ -74,6 +77,7 @@ pixi shell                                         # launcher env
 snakemake -n -p --profile profiles/slurm           # dry run
 snakemake --profile profiles/slurm                 # SLURM
 snakemake --profile profiles/local                 # local
+pixi run test                                      # end-to-end test
 ```
 
 Run from the repository root. Local runs suit small data only.
