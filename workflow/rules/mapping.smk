@@ -121,7 +121,7 @@ rule postprocess:
 
         echo "$(date): Rule started"
 
-        python workflow/scripts/read_filter.py \
+        python {workflow.basedir:q}/scripts/read_filter.py \
             -i {input.bam:q} \
             {input.chromsizes:q} | \
         samtools sort \
@@ -134,7 +134,7 @@ rule postprocess:
         md5sum {output.bam:q} > {output.md5:q}
         echo "$(date): md5sum completed"
 
-        python workflow/scripts/make_average_coverage.py \
+        python {workflow.basedir:q}/scripts/make_average_coverage.py \
             --bamfile {output.bam:q} \
             --chromsizes {input.chromsizes:q} \
             --threads {threads} \

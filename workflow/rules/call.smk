@@ -24,7 +24,7 @@ rule generate_chrome_ctgs:
         mkdir -p "$OUTPUT_DIR"
         cp {input.chromsizes:q} $OUTPUT_DIR
 
-        python workflow/scripts/make_ctg_beds.py \
+        python {workflow.basedir:q}/scripts/make_ctg_beds.py \
             --chromsizes $OUTPUT_DIR/$(basename {input.chromsizes:q}) \
             --output_dir $OUTPUT_DIR \
             --barcode {wildcards.sample:q}

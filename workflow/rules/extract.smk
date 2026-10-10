@@ -78,7 +78,7 @@ rule extract_signal:
         r"""
         exec &> >(tee {log:q})
 
-        python workflow/scripts/extract_signal.py \
+        python {workflow.basedir:q}/scripts/extract_signal.py \
             --bed-gz {input.bed_gz:q} \
             --chromsizes {input.chromsizes:q} \
             --output-dir $(dirname {output.bigwigs[0]:q}) \
@@ -103,7 +103,7 @@ rule get_methylc:
         r"""
         exec &> >(tee {log:q})
 
-        python workflow/scripts/get_methylc.py \
+        python {workflow.basedir:q}/scripts/get_methylc.py \
             --barcode {wildcards.sample:q} \
             --chh {input.chh_bed_gz:q} \
             --chg {input.chg_bed_gz:q} \
