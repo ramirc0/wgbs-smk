@@ -1,73 +1,75 @@
 rule indexing:
     input:
-        fasta=config['reference']
+        fasta=REFERENCE,
     output:
-        fasta="results/indexes/reference.fasta",
-        fasta_fai="results/indexes/reference.fasta.fai",
-        chromsizes="results/indexes/chromsizes.tsv",
-        sam_dict="results/indexes/sam_dict.tsv",
-        indexes=directory("results/indexes"),
-        signal="results/indexes/.continue"
+        fasta=f"{REFDIR}/reference.fasta",
+        fasta_fai=f"{REFDIR}/reference.fasta.fai",
+        chromsizes=f"{REFDIR}/chromsizes.tsv",
+        sam_dict=f"{REFDIR}/sam_dict.tsv",
     params:
-        assembly=lambda w: f"-a {config.get('assembly')}" if config.get('assembly') else '',
-        species=lambda w: f"-s {config.get('species')}" if config.get('species') else '',
-        tmpdir=config['tmpdir']
-    container: "docker://clarity001/wgbs-smk:latest"
-    log: "results/logfiles/indexes.log"
+        stage=lambda w: f"{config['tmpdir']}/{REFDIR}",
+        dict_flags=lambda w: dict_flags(),
+    log:
+        f"{LOGDIR}/indexing.txt",
+    benchmark:
+        f"{BENCHDIR}/indexing.tsv",
+    software:
+        SOFTWARE_ENV
     shell:
-        """
-        exec >> {log} 2>&1
-        OUTPUT_DIR={params.tmpdir}/results/indexes
-        
+        r"""
+        exec &> >(tee {log:q})
+
+        OUTPUT_DIR={params.stage:q}
+
         mkdir -p "$OUTPUT_DIR"
-        cp {input.fasta} "$OUTPUT_DIR"
-        FASTA=$OUTPUT_DIR/$(basename {input.fasta})
+        cp {input.fasta:q} "$OUTPUT_DIR"
+        FASTA=$OUTPUT_DIR/$(basename {input.fasta:q})
         if [[ "$FASTA" == *.gz ]]; then
-            unpigz -c "$FASTA" > $OUTPUT_DIR/$(basename {output.fasta})
+            unpigz -c "$FASTA" > $OUTPUT_DIR/$(basename {output.fasta:q})
         else
-            mv "$FASTA" $OUTPUT_DIR/$(basename {output.fasta})
+            mv "$FASTA" $OUTPUT_DIR/$(basename {output.fasta:q})
         fi
         rm -rf "$FASTA"
 
-        samtools faidx -@ {resources.threads} $OUTPUT_DIR/$(basename {output.fasta})
-        cut -f1,2 $OUTPUT_DIR/$(basename {output.fasta}).fai > $OUTPUT_DIR/$(basename {output.chromsizes})
+        samtools faidx -@ {threads} $OUTPUT_DIR/$(basename {output.fasta:q})
+        cut -f1,2 $OUTPUT_DIR/$(basename {output.fasta:q}).fai > $OUTPUT_DIR/$(basename {output.chromsizes:q})
         samtools dict \
-            -o $OUTPUT_DIR/$(basename {output.sam_dict}) \
-            {params.assembly} \
-            {params.species} \
-            $OUTPUT_DIR/$(basename {output.fasta})
+            -o $OUTPUT_DIR/$(basename {output.sam_dict:q}) \
+            {params.dict_flags:q} \
+            $OUTPUT_DIR/$(basename {output.fasta:q})
 
-        cp -t {output.indexes} "$OUTPUT_DIR"/* 
+        cp -t $(dirname {output.fasta:q}) "$OUTPUT_DIR"/*
         rm -rf "$OUTPUT_DIR"
 
         echo "Done!"
-        touch {output.signal}
         """
+
 
 rule gem_indexer:
     input:
-        fasta=rules.indexing.output.fasta,
+        fasta=f"{REFDIR}/reference.fasta",
     output:
-        gem_index="results/indexes/reference.gem",
-        signal="results/indexes/gem_indexer.continue",
+        gem_index=f"{REFDIR}/reference.gem",
     params:
-        sampling_rate=config['index']['sampling_rate'],
-    shadow: "copy-minimal"
-    container: "docker://clarity001/gem3-mapper:latest"
-    log: os.path.join(workflow.basedir, "results/logfiles/gem_indexer.log") # must be abspath
+        sampling_rate=lambda w: config["index"]["sampling_rate"],
+    log:
+        f"{LOGDIR}/gem_indexer.txt",
+    benchmark:
+        f"{BENCHDIR}/gem_indexer.tsv",
+    shadow:
+        "copy-minimal"
+    software:
+        SOFTWARE_ENV
     shell:
-        """
-        exec >> {log} 2>&1
+        r"""
+        exec &> >(tee {log:q})
 
         gem-indexer \
-            -i {input.fasta} \
-            -o $(dirname {output.gem_index})/reference \
+            -i {input.fasta:q} \
+            -o $(dirname {output.gem_index:q})/reference \
             --bisulfite-index \
-            --text-sampling-rate {params.sampling_rate} \
-            --threads {resources.threads}
+            --text-sampling-rate {params.sampling_rate:q} \
+            --threads {threads}
 
         echo "Done!"
-        touch {output.signal}
         """
-
-

@@ -1,0 +1,97 @@
+executor: slurm
+software-deployment-method:
+  - pixi
+# Snakemake copies every env package here. pixi installs from its own cache.
+# One copy per user instead of one per workdir.
+software-deployment-cache-prefix: ~/.cache/snakemake/software
+
+jobs: 40
+max-jobs-per-second: 5
+
+slurm-efficiency-report: true
+slurm-efficiency-report-path: logs/efficiency
+slurm-efficiency-threshold: 0.8
+
+default-resources:
+  slurm_partition: 12hours
+  runtime: 60m
+  mem_mb: 4000
+  # gem3-mapper is built for AVX-512 (x86-64-v4); cascadelake nodes have it.
+  constraint: cascadelake
+  slurm_extra: "--exclude=z[1024,1062] --cpu-freq=High-High:Performance"
+
+set-threads:
+  indexing: 13
+  gem_indexer: 52
+  split: 6
+  mapping: 26
+  merge: 13
+  postprocess: 13
+  get_coverage: 13
+  generate_chrome_ctgs: 13
+  calling: 26
+  merge_chroms: 26
+  gembs_extract: 26
+  extract_signal: 6
+  get_methylc: 26
+
+set-resources:              # tune from benchmarks/ TSVs after a real run
+  indexing:
+    slurm_partition: 4hours
+    mem_mb: 125000 * attempt
+    runtime: 240m
+  gem_indexer:
+    mem_mb: 500000 * attempt
+    runtime: 720m
+  split:
+    mem_mb: 62500 * attempt
+    runtime: 720m
+  mapping:
+    slurm_partition: 5days
+    mem_mb: 250000 * attempt
+    runtime: 7200m
+  merge:
+    slurm_partition: 4hours
+    mem_mb: 12500 * attempt
+    runtime: 240m
+  postprocess:
+    mem_mb: 125000 * attempt
+    runtime: 720m
+  get_coverage:
+    slurm_partition: 4hours
+    mem_mb: 125000 * attempt
+    runtime: 240m
+  generate_chrome_ctgs:
+    slurm_partition: 4hours
+    mem_mb: 125000 * attempt
+    runtime: 240m
+  calling:
+    slurm_partition: 4hours
+    mem_mb: 250000 * attempt
+    runtime: 240m
+  merge_chroms:
+    slurm_partition: 4hours
+    mem_mb: 250000 * attempt
+    runtime: 240m
+  gembs_extract:
+    mem_mb: 250000 * attempt
+    runtime: 720m
+  extract_signal:
+    slurm_partition: 4hours
+    mem_mb: 500000 * attempt
+    runtime: 240m
+  get_methylc:
+    slurm_partition: 4hours
+    mem_mb: 500000 * attempt
+    runtime: 240m
+
+# gem_indexer runs in a shadow directory. Keep it on node-local disk.
+shadow-prefix: /tmp
+rerun-incomplete: true
+keep-going: true
+show-failed-logs: true
+benchmark-extended: true
+retries: 1
+slurm-requeue: false
+printshellcmds: true
+latency-wait: 60

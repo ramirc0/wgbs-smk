@@ -1,0 +1,48 @@
+# Local execution.
+software-deployment-method:
+  - pixi
+# Snakemake copies every env package here. pixi installs from its own cache.
+# One copy per user instead of one per workdir.
+software-deployment-cache-prefix: ~/.cache/snakemake/software
+
+cores: 16
+printshellcmds: true
+rerun-incomplete: true
+keep-going: true
+show-failed-logs: true
+retries: 1
+benchmark-extended: true
+
+default-resources:          # fallback for trivial rules
+  mem_mb: 2000
+  runtime: 30
+
+set-threads:
+  indexing: 52
+  gem_indexer: 52
+  split: 6
+  mapping: 26
+  merge: 13
+  postprocess: 13
+  get_coverage: 13
+  generate_chrome_ctgs: 13
+  calling: 26
+  merge_chroms: 26
+  gembs_extract: 26
+  extract_signal: 6
+  get_methylc: 26
+
+set-resources:              # tune from benchmarks/ TSVs after a real run
+  indexing: {mem_mb: 500000}
+  gem_indexer: {mem_mb: 500000}
+  split: {mem_mb: 62500}
+  mapping: {mem_mb: 250000}
+  merge: {mem_mb: 12500}
+  postprocess: {mem_mb: 125000}
+  get_coverage: {mem_mb: 125000}
+  generate_chrome_ctgs: {mem_mb: 125000}
+  calling: {mem_mb: 250000}
+  merge_chroms: {mem_mb: 250000}
+  gembs_extract: {mem_mb: 250000}
+  extract_signal: {mem_mb: 500000}
+  get_methylc: {mem_mb: 500000}

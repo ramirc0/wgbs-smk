@@ -1,130 +1,145 @@
 rule generate_chrome_ctgs:
     input:
-        indexes_signal="results/indexes/.continue",
-        chromsizes=rules.indexing.output.chromsizes
+        chromsizes=f"{REFDIR}/chromsizes.tsv",
     output:
-        ctg_beds=temp(expand("results/calls/{{barcode}}/{{barcode}}_{contig}_ctgs.bed", contig=CONTIGS))
+        ctg_beds=temp(
+            expand(
+                f"{OUTDIR}/{{{{sample}}}}/{{{{sample}}}}_{{contig}}_ctgs.bed",
+                contig=CONTIGS,
+            )
+        ),
     params:
-        barcode=lambda w: w.barcode,
-        tmpdir=config['tmpdir']
-    container: "docker://clarity001/wgbs-smk:latest"
-    log: "results/logfiles/calls/{barcode}_ctgs.log"
+        stage=lambda w: f"{config['tmpdir']}/{OUTDIR}/calls/{w.sample}",
+    log:
+        f"{LOGDIR}/generate_chrome_ctgs/{{sample}}.txt",
+    benchmark:
+        f"{BENCHDIR}/generate_chrome_ctgs/{{sample}}.tsv",
+    software:
+        SOFTWARE_ENV
     shell:
-        """
-        exec >> {log} 2>&1
+        r"""
+        exec &> >(tee {log:q})
 
-        OUTPUT_DIR={params.tmpdir}/results/calls/{params.barcode}
+        OUTPUT_DIR={params.stage:q}
         mkdir -p "$OUTPUT_DIR"
-        cp {input.chromsizes} $OUTPUT_DIR
+        cp {input.chromsizes:q} $OUTPUT_DIR
 
-        python workflow/rules/scripts/make_ctg_beds.py \
-            --chromsizes $OUTPUT_DIR/$(basename {input.chromsizes}) \
+        python workflow/scripts/make_ctg_beds.py \
+            --chromsizes $OUTPUT_DIR/$(basename {input.chromsizes:q}) \
             --output_dir $OUTPUT_DIR \
-            --barcode {params.barcode}
+            --barcode {wildcards.sample:q}
 
-        rm -rf $OUTPUT_DIR/$(basename {input.chromsizes})
-        cp -t results/calls/{params.barcode} "$OUTPUT_DIR"/{params.barcode}_*_ctgs.bed
+        rm -rf $OUTPUT_DIR/$(basename {input.chromsizes:q})
+        cp -t $(dirname {output.ctg_beds[0]:q}) "$OUTPUT_DIR"/{wildcards.sample:q}_*_ctgs.bed
         rm -rf "$OUTPUT_DIR"
-        
+
         echo "Generated contig bed files!"
         """
 
+
 rule calling:
     input:
-        bam=rules.postprocess.output.bam,
-        bam_csi=rules.postprocess.output.bam_csi,
-        ctg_bed="results/calls/{barcode}/{barcode}_{contig}_ctgs.bed",
-        fasta=rules.indexing.output.fasta,
-        fasta_fai=rules.indexing.output.fasta_fai,
-        chromsizes=rules.indexing.output.chromsizes
+        bam=f"{OUTDIR}/{{sample}}/{{sample}}.bam",
+        bam_csi=f"{OUTDIR}/{{sample}}/{{sample}}.bam.csi",
+        ctg_bed=f"{OUTDIR}/{{sample}}/{{sample}}_{{contig}}_ctgs.bed",
+        fasta=f"{REFDIR}/reference.fasta",
+        fasta_fai=f"{REFDIR}/reference.fasta.fai",
+        chromsizes=f"{REFDIR}/chromsizes.tsv",
     output:
-        bcf=temp("results/calls/{barcode}/{barcode}_{contig}.bcf"),
-        report="results/calls/{barcode}/{barcode}_{contig}.json"
+        bcf=temp(f"{OUTDIR}/{{sample}}/{{sample}}_{{contig}}.bcf"),
+        report=f"{OUTDIR}/{{sample}}/{{sample}}_{{contig}}.json",
     params:
-        barcode=lambda w: w.barcode,
-        contig=lambda w: w.contig,
-        tmpdir=config['tmpdir'],
-        out_type=config['calling']['output_type'],
-        conversion=config['calling']['conversion'],
-        ltrim=config['calling']['left_trim'],
-        rtrim=config['calling']['right_trim'],
-        ref_bias=config['calling']['reference_bias'],
-        mapq=config['calling']['mapq_threshold'],
-        qual=config['calling']['qual_threshold']
-    container: "docker://clarity001/wgbs-smk:latest"
-    log: "results/logfiles/calls/{barcode}_{contig}.log"
+        stage=lambda w: f"{config['tmpdir']}/{OUTDIR}/calls/{w.sample}",
+        out_type=lambda w: config["calling"]["output_type"],
+        conversion=lambda w: config["calling"]["conversion"],
+        ltrim=lambda w: config["calling"]["left_trim"],
+        rtrim=lambda w: config["calling"]["right_trim"],
+        ref_bias=lambda w: config["calling"]["reference_bias"],
+        mapq=lambda w: config["calling"]["mapq_threshold"],
+        qual=lambda w: config["calling"]["qual_threshold"],
+    log:
+        f"{LOGDIR}/calling/{{sample}}_{{contig}}.txt",
+    benchmark:
+        f"{BENCHDIR}/calling/{{sample}}_{{contig}}.tsv",
+    software:
+        SOFTWARE_ENV
     shell:
-        """
-        exec >> {log} 2>&1
+        r"""
+        exec &> >(tee {log:q})
 
-        OUTPUT_DIR={params.tmpdir}/results/calls/{params.barcode}/{params.contig}
-        CTGS_DIR={params.tmpdir}/results/calls/{params.barcode}
+        OUTPUT_DIR={params.stage:q}/{wildcards.contig:q}
+        CTGS_DIR={params.stage:q}
         mkdir -p "$OUTPUT_DIR"
         mkdir -p "$CTGS_DIR"
-        cp {input.bam} {input.bam_csi} {input.chromsizes} {input.fasta} {input.fasta_fai} $OUTPUT_DIR
-        cp {input.ctg_bed} $CTGS_DIR
+        cp {input.bam:q} {input.bam_csi:q} {input.chromsizes:q} {input.fasta:q} {input.fasta_fai:q} $OUTPUT_DIR
+        cp {input.ctg_bed:q} $CTGS_DIR
 
         bs_call \
             --loglevel info \
-            --output $OUTPUT_DIR/$(basename {output.bcf}) \
-            --output-type {params.out_type} \
-            --reference $OUTPUT_DIR/$(basename {input.fasta}) \
-            --sample {params.barcode} \
-            --contig-include $OUTPUT_DIR/$(basename {input.chromsizes}) \
-            --report-file $OUTPUT_DIR/$(basename {output.report}) \
-            --contig-bed $CTGS_DIR/$(basename {input.ctg_bed}) \
-            --threads {resources.threads} \
-            --conversion {params.conversion} \
-            --left-trim {params.ltrim} \
-            --right-trim {params.rtrim} \
-            --reference-bias {params.ref_bias} \
-            --mapq-threshold {params.mapq} \
-            --bq-threshold {params.qual} \
-            $OUTPUT_DIR/$(basename {input.bam})
+            --output $OUTPUT_DIR/$(basename {output.bcf:q}) \
+            --output-type {params.out_type:q} \
+            --reference $OUTPUT_DIR/$(basename {input.fasta:q}) \
+            --sample {wildcards.sample:q} \
+            --contig-include $OUTPUT_DIR/$(basename {input.chromsizes:q}) \
+            --report-file $OUTPUT_DIR/$(basename {output.report:q}) \
+            --contig-bed $CTGS_DIR/$(basename {input.ctg_bed:q}) \
+            --threads {threads} \
+            --conversion {params.conversion:q} \
+            --left-trim {params.ltrim:q} \
+            --right-trim {params.rtrim:q} \
+            --reference-bias {params.ref_bias:q} \
+            --mapq-threshold {params.mapq:q} \
+            --bq-threshold {params.qual:q} \
+            $OUTPUT_DIR/$(basename {input.bam:q})
 
-        cp $OUTPUT_DIR/$(basename {output.bcf}) $OUTPUT_DIR/$(basename {output.report}) results/calls/{params.barcode}
-        rm -rf $OUTPUT_DIR/$(basename {input.fasta}) $OUTPUT_DIR/$(basename {input.fasta}) $OUTPUT_DIR/$(basename {input.bam}) $OUTPUT_DIR/$(basename {input.bam_csi})
-        rm -rf $CTGS_DIR/$(basename {input.ctg_bed})
+        cp $OUTPUT_DIR/$(basename {output.bcf:q}) $OUTPUT_DIR/$(basename {output.report:q}) $(dirname {output.bcf:q})
+        rm -rf $OUTPUT_DIR/$(basename {input.fasta:q}) $OUTPUT_DIR/$(basename {input.fasta:q}) $OUTPUT_DIR/$(basename {input.bam:q}) $OUTPUT_DIR/$(basename {input.bam_csi:q})
+        rm -rf $CTGS_DIR/$(basename {input.ctg_bed:q})
 
-        echo "Generated BCF file for {params.contig}"
+        echo "Generated BCF file for {wildcards.contig:q}"
         """
+
 
 rule merge_chroms:
     input:
-        chrom_bcfs=get_chrom_bcfs
+        chrom_bcfs=expand(
+            f"{OUTDIR}/{{{{sample}}}}/{{{{sample}}}}_{{contig}}.bcf", contig=CONTIGS
+        ),
     output:
-        signal="results/calls/{barcode}/.continue",
-        bcf="results/calls/{barcode}/{barcode}.bcf",
-        bcf_csi="results/calls/{barcode}/{barcode}.bcf.csi",
-        bcf_md5="results/calls/{barcode}/{barcode}.bcf.md5"
+        bcf=f"{OUTDIR}/{{sample}}/{{sample}}.bcf",
+        bcf_csi=f"{OUTDIR}/{{sample}}/{{sample}}.bcf.csi",
+        bcf_md5=f"{OUTDIR}/{{sample}}/{{sample}}.bcf.md5",
     params:
-        barcode=lambda w: w.barcode,
-        tmpdir=config['tmpdir'],
-        out_type=config['calling']['output_type']
-    container: "docker://clarity001/wgbs-smk:latest"
-    log: "results/logfiles/calls/{barcode}_merge.log"
+        stage=lambda w: f"{config['tmpdir']}/{OUTDIR}/calls/{w.sample}",
+        out_type=lambda w: config["calling"]["output_type"],
+    log:
+        f"{LOGDIR}/merge_chroms/{{sample}}.txt",
+    benchmark:
+        f"{BENCHDIR}/merge_chroms/{{sample}}.tsv",
+    software:
+        SOFTWARE_ENV
     shell:
-        """
-        exec >> {log} 2>&1
+        r"""
+        exec &> >(tee {log:q})
 
-        OUTPUT_DIR={params.tmpdir}/results/calls/{params.barcode}
+        OUTPUT_DIR={params.stage:q}
         mkdir -p "$OUTPUT_DIR"
-        cp {input.chrom_bcfs} $OUTPUT_DIR
+        cp {input.chrom_bcfs:q} $OUTPUT_DIR
 
+        # Contig order in the merged BCF is the shell's glob order, not CONTIGS order.
         bcftools concat \
-            --output $OUTPUT_DIR/$(basename {output.bcf}) \
-            --output-type {params.out_type} \
+            --output $OUTPUT_DIR/$(basename {output.bcf:q}) \
+            --output-type {params.out_type:q} \
             --naive \
-            --threads {resources.threads} \
-           $OUTPUT_DIR/{params.barcode}_*.bcf
+            --threads {threads} \
+            $OUTPUT_DIR/{wildcards.sample:q}_*.bcf
 
-        bcftools index --threads {resources.threads} $OUTPUT_DIR/$(basename {output.bcf})
+        bcftools index --threads {threads} $OUTPUT_DIR/$(basename {output.bcf:q})
 
-        md5sum $OUTPUT_DIR/$(basename {output.bcf}) > $OUTPUT_DIR/$(basename {output.bcf_md5})
+        md5sum $OUTPUT_DIR/$(basename {output.bcf:q}) > $OUTPUT_DIR/$(basename {output.bcf_md5:q})
 
-        cp -t results/calls/{params.barcode} $OUTPUT_DIR/$(basename {output.bcf}) $OUTPUT_DIR/$(basename {output.bcf_csi}) $OUTPUT_DIR/$(basename {output.bcf_md5})
+        cp -t $(dirname {output.bcf:q}) $OUTPUT_DIR/$(basename {output.bcf:q}) $OUTPUT_DIR/$(basename {output.bcf_csi:q}) $OUTPUT_DIR/$(basename {output.bcf_md5:q})
         rm -rf "$OUTPUT_DIR"
 
         echo "Done!"
-        touch {output.signal}
         """

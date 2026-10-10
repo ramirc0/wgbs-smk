@@ -1,0 +1,30 @@
+samples: config/samples.tsv
+outdir: results
+pixi_env: default
+run_id: default          # outputs go under results/<run_id>/; override per run
+tmpdir: /tmp             # node-local scratch; rules stage I/O here (needs exec, see README)
+
+references:
+  reference: resources/genome.fasta      # FASTA or FASTA.gz; basename MUST NOT be reference.fasta
+
+assembly: GRCh38         # optional, samtools dict AS tag
+species: Homo_sapiens    # optional, samtools dict SP tag, no whitespace
+
+index:
+  sampling_rate: 4       # gem-indexer --text-sampling-rate
+
+fastq_split: 2           # parts per FASTQ pair (split always passes -p 2, see README)
+
+calling:
+  output_type: b         # bs_call --output-type (b: BCF, v: VCF, ...)
+  mapq_threshold: 10
+  qual_threshold: 13
+  reference_bias: 2
+  left_trim: 5
+  right_trim: 0
+  conversion: 0.01,0.05  # under- and over-conversion, comma-delimited
+
+extract:
+  strand_specific: true
+  bw_strand_specific: true
+  phred_threshold: 10

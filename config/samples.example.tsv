@@ -1,0 +1,3 @@
+sample_id	dataset	fastq_1	fastq_2
+S001	EXP1_rep1	resources/MOHD_S001_R1.fastq.gz	resources/MOHD_S001_R2.fastq.gz
+S002	EXP1_rep2	resources/MOHD_S002_R1.fastq.gz	resources/MOHD_S002_R2.fastq.gz
