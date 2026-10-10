@@ -1,0 +1,29 @@
+# Launcher: Snakemake with the pixi software-deployment and SLURM executor
+# plugins. Rule envs live in their own workspace, workflow/envs/pixi.toml.
+[workspace]
+name = "wgbs-smk"
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+python = "3.13.*"
+polars = "*"
+
+[pypi-dependencies]
+snakemake = { git = "https://github.com/snakemake/snakemake.git", rev = "5bf5e21b0d0e7e65e247c1f2c61c1a4f74a1a752" }
+snakemake-software-deployment-plugin-pixi = { git = "https://github.com/cademirch/snakemake-software-deployment-plugin-pixi.git", rev = "315e0f3113daefc2dfeda3a48777cd1acb2707e0" }
+snakemake-executor-plugin-slurm = "==2.8.0"
+snakemake-executor-plugin-slurm-jobstep = "==0.6.1"
+
+[tasks]
+test = "snakemake --snakefile workflow/Snakefile --directory .tests/integration --profile profiles/local --cores 2 --forceall"
+
+[feature.lint.dependencies]
+ruff = ">=0.16.9,<0.17"
+numpydoc = ">=1.11.0,<2"
+
+[feature.lint.tasks]
+lint = "ruff check && ruff format --check && numpydoc lint workflow/scripts/*.py"
+
+[environments]
+lint = { features = ["lint"], no-default-feature = true }
