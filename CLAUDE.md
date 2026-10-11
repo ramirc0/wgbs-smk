@@ -30,7 +30,7 @@ pixi run snakemake --profile profiles/slurm --configfile .tests/validation/confi
 - The read group needs real tab characters. Build it in `read_group()`, never inside an `r"""` shell block.
 - `seqkit split2 -f` wipes its output dir. Keep the split FASTQs in their own `split/` dir.
 - gem3-mapper is built with `-march=x86-64-v4`. It needs AVX-512 nodes.
-- Scripts pin polars 1.x. They use the 1.x `read_csv` API.
+- The rule env pins polars 2.x. The scripts read mextr's headerless bedMethyl by column index.
 - `/` on this host is nearly full. Point `TMPDIR` at a `/home` path for builds and test runs. Do not set it for a SLURM launch: jobs inherit it as `resources.tmpdir`.
 - Known issues in README.md are kept on purpose for parity with the `pre-template` tag. Fix one only with a test that shows it.
 

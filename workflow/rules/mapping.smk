@@ -25,7 +25,7 @@ rule split:
         r"""
         exec &> >(tee {log:q})
 
-        # seqkit names the parts after its inputs. --by-part-prefix is a no-op in 2.11.
+        # The links fix the part names: seqkit keeps each input's name and extension.
         mkdir -p {params.tmpdir:q}
         STAGE=$(mktemp -d -p {params.tmpdir:q})
         ln -s "$(realpath {input.r1:q})" "$STAGE"/{wildcards.sample:q}_R1.fastq.gz
