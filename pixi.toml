@@ -7,6 +7,8 @@ platforms = ["linux-64"]
 
 [dependencies]
 python = "3.14.*"
+# PyPI has no cp314 wheel. A local build would take the AVX-512 CFLAGS.
+immutables = "*"
 
 [pypi-dependencies]
 snakemake = { git = "https://github.com/snakemake/snakemake.git", rev = "4523356973a83aa237a121717ee81dd2e09175da" }
