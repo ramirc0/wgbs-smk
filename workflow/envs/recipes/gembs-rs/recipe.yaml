@@ -1,8 +1,8 @@
-# bs_call, mextr and read_filter from gemBS-rs master, unchanged since 2022, as
-# the old Docker image built them. None is packaged on conda.
+# bs_call 3.1.2, mextr 2.1.0 and read_filter from gemBS-rs dev, where its
+# maintenance happens; master last changed in 2022. None is packaged on conda.
 context:
-  version: "4.0.4"
-  rev: 9d2e5e6e27b5f2915dcbeccc657326368b6f996d
+  version: "4.4.4"
+  rev: baf6056faf2c1a4adcaf37e0a840f73249927b74
 
 package:
   name: gembs-rs
@@ -36,4 +36,4 @@ requirements:
 about:
   homepage: https://github.com/heathsc/gemBS-rs
   license: BSD-3-Clause
-  summary: bs_call, mextr and read_filter from gemBS-rs.
+  summary: bs_call, mextr and read_filter from gemBS-rs dev.

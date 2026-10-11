@@ -156,7 +156,8 @@ Most tools come from conda-forge and bioconda. Two are built from source by
 - gem3-mapper at `882b0d8` on its `gembs` branch, the commit gemBS-rs pins,
   compiled with `-O3 -march=x86-64-v4`. It needs AVX-512 CPUs. The SLURM
   profile requests cascadelake nodes for its two rules for this reason.
-- gemBS-rs `master` (`bs_call`, `mextr`). Neither is packaged on conda.
+- gemBS-rs `dev` at `baf6056` (`bs_call` 3.1.2, `mextr` 2.1.0, `read_filter`).
+  `master` last changed in 2022. None of the three is packaged on conda.
 
 Any change to a manifest, recipe, or lock reruns every rule.
 
@@ -211,8 +212,6 @@ tested here.
 - `mextr` rebuilds its regions as `contig:start-end` strings from 0-based
   coordinates and parses them as 1-based, which may drop the last base of each
   contig.
-- `bs_call` 3.0.1 writes the `##FORMAT=<ID=FS` header line without its closing
-  `>`, so htslib warns `Incomplete header line` on every read.
 
 ## References
 
