@@ -85,8 +85,6 @@ set-resources:              # tune from benchmarks/ TSVs after a real run
     mem_mb: 500000 * attempt
     runtime: 240m
 
-# gem_indexer runs in a shadow directory. Keep it on node-local disk.
-shadow-prefix: /tmp
 rerun-incomplete: true
 keep-going: true
 show-failed-logs: true

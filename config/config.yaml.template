@@ -2,7 +2,7 @@ samples: config/samples.tsv
 outdir: results
 pixi_env: default
 run_id: default          # outputs go under results/<run_id>/; override per run
-tmpdir: /tmp             # node-local scratch; rules stage I/O here (needs exec, see README)
+tmpdir: /tmp             # node-local scratch for sort and index temporary files
 
 references:
   reference: resources/genome.fasta      # FASTA or FASTA.gz

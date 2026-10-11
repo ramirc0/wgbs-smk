@@ -37,26 +37,27 @@ rule gem_indexer:
         fasta=f"{REFDIR}/reference.fasta",
     output:
         gem_index=f"{REFDIR}/reference.gem",
+        gem_info=f"{REFDIR}/reference.info",
     params:
         sampling_rate=lambda w: config["index"]["sampling_rate"],
+        tmpdir=config["tmpdir"],
     log:
         f"{LOGDIR}/gem_indexer.txt",
     benchmark:
         f"{BENCHDIR}/gem_indexer.tsv",
-    shadow:
-        "copy-minimal"
     software:
         SOFTWARE_ENV
     shell:
         r"""
         exec &> >(tee {log:q})
 
+        # gem-indexer appends file names to --tmp-folder without a slash.
+        mkdir -p {params.tmpdir:q}
         gem-indexer \
             -i {input.fasta:q} \
             -o $(dirname {output.gem_index:q})/reference \
             --bisulfite-index \
             --text-sampling-rate {params.sampling_rate:q} \
-            --threads {threads}
-
-        echo "Done!"
+            --threads {threads} \
+            --tmp-folder {params.tmpdir:q}/
         """

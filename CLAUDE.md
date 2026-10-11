@@ -28,7 +28,6 @@ pixi run snakemake --profile profiles/slurm --configfile .tests/validation/confi
 - Shell blocks MUST call scripts as `{workflow.basedir:q}/scripts/x.py`. A cwd-relative path breaks `--directory`.
 - `.smk` files are not linted. Keep helper docstrings numpydoc by hand.
 - The read group needs real tab characters. Build it in `read_group()`, never inside an `r"""` shell block.
-- gembs_extract copies back everything in its staging dir. Its `tmpdir` subdir MUST stay apart from the `calls` one.
 - `seqkit split2 -f` wipes its output dir. Keep the split FASTQs in their own `split/` dir.
 - gem3-mapper is built with `-march=x86-64-v4`. It needs AVX-512 nodes.
 - Scripts pin polars 1.x. They use the 1.x `read_csv` API.

@@ -44,8 +44,6 @@ pyproject.toml           ruff + numpydoc config
 - **Config -> flags**: helpers such as `extract_flags()` and `dict_flags()` turn
   `config` into flag lists. `read_group()` builds the gem-mapper `@RG` line.
 - **Every rule** carries `log:`, `benchmark:`, and `software:`.
-- **Staging**: the heavy rules copy their inputs to `tmpdir`, run there, and
-  copy the results back.
 
 ## Conventions
 
@@ -105,8 +103,8 @@ One row per sample. Lines starting with `#` are ignored.
 ### Configuration
 
 - `samples`, `outdir`, `run_id`, `pixi_env`: as in the template.
-- `tmpdir`: node-local scratch for staging. On systems where `/tmp` is mounted
-  `noexec`, pick another path. The SLURM profile also sets `shadow-prefix: /tmp`.
+- `tmpdir`: node-local scratch for `samtools sort` and `gem-indexer` temporary
+  files.
 - `references.reference`: reference FASTA, plain or gzipped.
 - `assembly`, `species` (optional): `AS` and `SP` tags of the SAM sequence
   dictionary. `species` MUST NOT contain whitespace.
@@ -207,8 +205,6 @@ index `reference.gem`.
 These behaviors carry over unchanged from the pre-template pipeline (git tag
 `pre-template`).
 
-- Several files are written but not declared as outputs: the methylC `.tbi`,
-  and the `mextr` `.md5`, `.tbi` and `.bb` files.
 - `extract_signal` writes an empty file in place of a bigWig for a strand with
   no sites.
 - The SLURM profile keeps the old resource requests. On the ENCODE run, most

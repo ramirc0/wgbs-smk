@@ -14,9 +14,24 @@ rule gembs_extract:
             f"{OUTDIR}/{{sample}}/{{sample}}_neg.bw",
             f"{OUTDIR}/{{sample}}/{{sample}}_pos.bw",
         ],
+        # mextr writes a .md5 for every output and a .tbi for every text one.
+        sidecars=[
+            f"{OUTDIR}/{{sample}}/{{sample}}_{name}{ext}"
+            for name, exts in [
+                ("cpg.txt.gz", (".tbi", ".md5")),
+                ("non_cpg.txt.gz", (".tbi", ".md5")),
+                ("chg.bed.gz", (".tbi", ".md5")),
+                ("chh.bed.gz", (".tbi", ".md5")),
+                ("cpg.bed.gz", (".tbi", ".md5")),
+                ("chg.bb", ("", ".md5")),
+                ("chh.bb", ("", ".md5")),
+                ("cpg.bb", ("", ".md5")),
+                ("neg.bw", (".md5",)),
+                ("pos.bw", (".md5",)),
+            ]
+            for ext in exts
+        ],
     params:
-        # Separate from the calls staging dir: this rule copies back everything it finds.
-        stage=lambda w: f"{config['tmpdir']}/{OUTDIR}/extract/{w.sample}",
         flags=lambda w: extract_flags(),
     log:
         f"{LOGDIR}/gembs_extract/{{sample}}.txt",
@@ -28,26 +43,17 @@ rule gembs_extract:
         r"""
         exec &> >(tee {log:q})
 
-        OUTPUT_DIR={params.stage:q}
-        mkdir -p "$OUTPUT_DIR"
-
-        cp {input.bcf:q} {input.bcf_csi:q} $OUTPUT_DIR
-
         mextr \
             --loglevel info \
             --compress \
             --md5 \
-            --cpgfile $OUTPUT_DIR/$(basename {output.cpgfile:q}) \
-            --noncpgfile $OUTPUT_DIR/$(basename {output.noncpgfile:q}) \
-            --bed-methyl $OUTPUT_DIR/{wildcards.sample:q} \
+            --cpgfile {output.cpgfile:q} \
+            --noncpgfile {output.noncpgfile:q} \
+            --bed-methyl $(dirname {output.cpgfile:q})/{wildcards.sample:q} \
             --tabix \
             --threads {threads} \
             {params.flags:q} \
-            $OUTPUT_DIR/$(basename {input.bcf:q})
-
-        rm -rf $OUTPUT_DIR/$(basename {input.bcf:q}) $OUTPUT_DIR/$(basename {input.bcf_csi:q})
-        cp -t $(dirname {output.cpgfile:q}) "$OUTPUT_DIR"/*
-        rm -rf "$OUTPUT_DIR"
+            {input.bcf:q}
         """
 
 
@@ -93,6 +99,7 @@ rule get_methylc:
         cpg_bed_gz=f"{OUTDIR}/{{sample}}/{{sample}}_cpg.bed.gz",
     output:
         methylc_bed_gz=f"{OUTDIR}/{{sample}}/{{sample}}_methylc.bed.gz",
+        methylc_tbi=f"{OUTDIR}/{{sample}}/{{sample}}_methylc.bed.gz.tbi",
     log:
         f"{LOGDIR}/get_methylc/{{sample}}.txt",
     benchmark:

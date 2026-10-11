@@ -79,7 +79,6 @@ def test_sq_lines_carry_md5_assembly_and_species(run):
         ]
 
 
-@pytest.mark.xfail(strict=True, reason="BCF and mextr md5 files name the staging path")
 def test_md5_sidecars_verify(run):
     """Check that every .md5 file names its file by a path that exists."""
     sidecars = sorted((run / "results").rglob("*.md5"))
@@ -107,18 +106,19 @@ def test_contig_beds_are_built_once_per_reference(run):
     assert "Pool@1" in names
 
 
-@pytest.mark.xfail(strict=True, reason="mextr, tabix and QC files are not declared")
 def test_untracked_files(run):
     """Check that the workflow declares every file it writes under results/."""
     done = snakemake(run, "--list-untracked")
     assert done.returncode == 0, done.stderr[-5000:]
+    # Snakemake lists the files inside the pools/ directory output as untracked.
     untracked = [
-        p for p in (done.stdout + done.stderr).split() if p.startswith("results/")
+        p
+        for p in (done.stdout + done.stderr).split()
+        if p.startswith("results/") and not p.startswith("results/refs/pools/")
     ]
     assert untracked == []
 
 
-@pytest.mark.xfail(strict=True, reason="staging dirs stay behind")
 def test_tmpdir_is_empty_after_the_run(run):
     """Check that no job leaves files or directories in tmpdir."""
     assert list((run / "scratch").rglob("*")) == []
