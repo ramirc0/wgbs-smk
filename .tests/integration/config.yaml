@@ -1,0 +1,31 @@
+samples: .tests/integration/samples.tsv
+# Its own refs: results/refs/ may hold an index built from another FASTA.
+outdir: results/integration
+pixi_env: default
+run_id: encode-integration
+tmpdir: /tmp
+
+references:
+  reference: /data/zusers/ramirezc/atac-smk/resources/GRCh38_no_alt_analysis_set_GCA_000001405.15.fasta
+
+assembly: GRCh38
+species: Homo_sapiens
+
+index:
+  sampling_rate: 4
+
+fastq_split: 2
+
+calling:
+  output_type: b
+  mapq_threshold: 10
+  qual_threshold: 13
+  reference_bias: 2
+  left_trim: 5
+  right_trim: 0
+  conversion: 0.01,0.05
+
+extract:
+  strand_specific: true
+  bw_strand_specific: true
+  phred_threshold: 10

@@ -1,0 +1,8 @@
+# ENCODE WGBS biological replicates, one FASTQ pair each. Myers lab (HAIB),
+# HiSeq 2500, paired-end. ENCSR765JPC: K562, rep1 100 bp, rep2 125 bp.
+# ENCSR890UQO: GM12878, 125 bp. ENCODE4 v1.1.6 GRCh38 calls for all four are on disk.
+sample_id	dataset	fastq_1	fastq_2
+ENCSR765JPCrep1	ENCSR765JPC_rep1	/data/projects/encode/data/ENCSR765JPC/ENCFF413KHN.fastq.gz	/data/projects/encode/data/ENCSR765JPC/ENCFF567DAI.fastq.gz
+ENCSR765JPCrep2	ENCSR765JPC_rep2	/data/projects/encode/data/ENCSR765JPC/ENCFF336KJH.fastq.gz	/data/projects/encode/data/ENCSR765JPC/ENCFF585HYM.fastq.gz
+ENCSR890UQOrep1	ENCSR890UQO_rep1	/data/projects/encode/data/ENCSR890UQO/ENCFF798RSS.fastq.gz	/data/projects/encode/data/ENCSR890UQO/ENCFF113KRQ.fastq.gz
+ENCSR890UQOrep2	ENCSR890UQO_rep2	/data/projects/encode/data/ENCSR890UQO/ENCFF585BXF.fastq.gz	/data/projects/encode/data/ENCSR890UQO/ENCFF851HAT.fastq.gz
