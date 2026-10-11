@@ -147,6 +147,19 @@ def test_fastq_split_one_maps_the_pair_whole(tmp_path, run):
     assert count[0] == count[1]
 
 
+def test_one_part_is_not_linked_to_the_final_bam(tmp_path):
+    """Check that the final BAM is a file of its own when there is one part.
+
+    Snakemake touches each output after a remote job. A hard link would touch
+    its input too, and the mtime check then fails the job.
+    """
+    path = workdir(tmp_path, [("fastq_split: 2 ", "fastq_split: 1 ")])
+    run_ok(path, "--notemp", f"{PREFIX}/S001/S001.bam")
+    sample = path / PREFIX / "S001"
+    for ext in (".bam", ".bam.csi"):
+        assert not (sample / f"S001{ext}").samefile(sample / f"S001.001{ext}")
+
+
 def test_fastq_split_into_three_parts(tmp_path):
     """Check that fastq_split other than 2 maps every part."""
     path = workdir(tmp_path, [("fastq_split: 2 ", "fastq_split: 3 ")])

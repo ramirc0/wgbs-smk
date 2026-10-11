@@ -129,8 +129,9 @@ rule merge:
         exec &> >(tee {log:q})
 
         if [[ {params.parts} -eq 1 ]]; then
-            ln -f {input.bams:q} {output.bam:q}
-            ln -f {input.csis:q} {output.bam_csi:q}
+            # Not a hard link: Snakemake touches outputs, which would touch the inputs.
+            cp {input.bams:q} {output.bam:q}
+            cp {input.csis:q} {output.bam_csi:q}
         else
             # -c and -p keep one @RG and @PG per dataset: every part has the same IDs.
             samtools merge \
