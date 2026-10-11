@@ -202,13 +202,17 @@ index `reference.gem`.
 
 ## Known issues
 
-These behaviors carry over unchanged from the pre-template pipeline (git tag
-`pre-template`).
+These come from gemBS-rs and were found by reading its code. They are not
+tested here.
 
-- The SLURM profile keeps the old resource requests. On the ENCODE run, most
-  jobs used a small part of their memory: `calling` peaked at 1.2 GB of
-  250 GB, `mapping` at 35 GB of 250 GB. `merge` came closest, at 11.0 GB of
-  12.5 GB. Every job finished within half its time limit.
+- `mextr` indexes its text outputs with tabix's generic preset, which reads the
+  0-based start column as 1-based. Region queries on those `.tbi` files are off
+  by one base.
+- `mextr` rebuilds its regions as `contig:start-end` strings from 0-based
+  coordinates and parses them as 1-based, which may drop the last base of each
+  contig.
+- `bs_call` 3.0.1 writes the `##FORMAT=<ID=FS` header line without its closing
+  `>`, so htslib warns `Incomplete header line` on every read.
 
 ## References
 

@@ -16,50 +16,58 @@ default-resources:
   slurm_partition: 12hours
   runtime: 60m
   mem_mb: 4000
-  # gem3-mapper is built for AVX-512 (x86-64-v4); cascadelake nodes have it.
-  constraint: cascadelake
   slurm_extra: "--exclude=z[1024,1062] --cpu-freq=High-High:Performance"
 
 set-threads:
-  indexing: 13
+  indexing: 4
   gem_indexer: 52
-  split: 6
-  mapping: 26
+  split: 8
+  mapping: 52
   merge: 13
-  bam_qc: 13
+  bam_qc: 4
   get_coverage: 13
   contig_pools: 1
-  calling: 26
-  merge_chroms: 26
-  gembs_extract: 26
-  extract_signal: 6
-  get_methylc: 26
+  # bs_call's --threads only sizes its htslib I/O pools.
+  calling: 4
+  merge_chroms: 4
+  gembs_extract: 16
+  extract_signal: 8
+  get_methylc: 8
 
-set-resources:              # tune from benchmarks/ TSVs after a real run
+# From the 2026-10-10 ENCODE run (benchmarks/encode-validation/). Peaks, largest
+# sample: gem_indexer 57 GB, mapping 34 GB at 26 threads, calling 1.2 GB,
+# gembs_extract 6.7 GB, extract_signal 196 GB and get_methylc 205 GB before
+# their rewrites.
+set-resources:
   indexing:
     slurm_partition: 4hours
-    mem_mb: 125000 * attempt
-    runtime: 240m
+    mem_mb: 8000 * attempt
+    runtime: 60m
   gem_indexer:
-    mem_mb: 500000 * attempt
-    runtime: 720m
+    # gem3-mapper is built for AVX-512 (x86-64-v4); cascadelake nodes have it.
+    constraint: cascadelake
+    mem_mb: 100000 * attempt
+    runtime: 240m
   split:
-    mem_mb: 62500 * attempt
+    mem_mb: 8000 * attempt
     runtime: 720m
   mapping:
+    constraint: cascadelake
     slurm_partition: 5days
-    mem_mb: 250000 * attempt
-    runtime: 7200m
+    # gem-mapper plus samtools sort's 768 MB per thread.
+    mem_mb: 160000 * attempt
+    runtime: 2880m
   merge:
     slurm_partition: 4hours
-    mem_mb: 12500 * attempt
+    mem_mb: 8000 * attempt
     runtime: 240m
   bam_qc:
-    mem_mb: 125000 * attempt
-    runtime: 720m
+    slurm_partition: 4hours
+    mem_mb: 8000 * attempt
+    runtime: 240m
   get_coverage:
     slurm_partition: 4hours
-    mem_mb: 125000 * attempt
+    mem_mb: 32000 * attempt
     runtime: 240m
   contig_pools:
     slurm_partition: 4hours
@@ -67,22 +75,23 @@ set-resources:              # tune from benchmarks/ TSVs after a real run
     runtime: 30m
   calling:
     slurm_partition: 4hours
-    mem_mb: 250000 * attempt
-    runtime: 240m
+    mem_mb: 4000 * attempt
+    runtime: 120m
   merge_chroms:
     slurm_partition: 4hours
-    mem_mb: 250000 * attempt
-    runtime: 240m
+    mem_mb: 4000 * attempt
+    runtime: 120m
   gembs_extract:
-    mem_mb: 250000 * attempt
-    runtime: 720m
+    slurm_partition: 4hours
+    mem_mb: 16000 * attempt
+    runtime: 240m
   extract_signal:
     slurm_partition: 4hours
-    mem_mb: 500000 * attempt
+    mem_mb: 200000 * attempt
     runtime: 240m
   get_methylc:
     slurm_partition: 4hours
-    mem_mb: 500000 * attempt
+    mem_mb: 200000 * attempt
     runtime: 240m
 
 rerun-incomplete: true
