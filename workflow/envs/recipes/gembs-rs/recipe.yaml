@@ -20,8 +20,9 @@ build:
     - cp gemBS/Cargo.toml.in gemBS/Cargo.toml
     # r_htslib links -lhts. Upstream passes -L the same way.
     - export CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS="$CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS -L $PREFIX/lib"
-    - cargo install --locked --no-track --root "$PREFIX" --path bs_call
-    - cargo install --locked --no-track --root "$PREFIX" --path mextr
+    # pixi-build reuses the host prefix on a rebuild. --force overwrites the old binaries.
+    - cargo install --locked --no-track --force --root "$PREFIX" --path bs_call
+    - cargo install --locked --no-track --force --root "$PREFIX" --path mextr
 
 requirements:
   build:
