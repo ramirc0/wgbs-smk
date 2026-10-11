@@ -1,8 +1,8 @@
-samples: .tests/integration/samples.tsv
+samples: .tests/validation/samples.tsv
 # Its own refs: results/refs/ may hold an index built from another FASTA.
-outdir: results/integration
+outdir: results/validation
 pixi_env: default
-run_id: encode-integration
+run_id: encode-validation
 tmpdir: /tmp
 
 references:

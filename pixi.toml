@@ -16,7 +16,7 @@ snakemake-executor-plugin-slurm = "==2.8.0"
 snakemake-executor-plugin-slurm-jobstep = "==0.6.1"
 
 [tasks]
-test = "snakemake --snakefile workflow/Snakefile --directory .tests/fixture --profile profiles/local --cores 2 --forceall"
+test = "snakemake --snakefile workflow/Snakefile --directory .tests/integration --profile profiles/local --cores 2 --forceall"
 
 [feature.lint.dependencies]
 ruff = ">=0.16.9,<0.17"

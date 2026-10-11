@@ -1,10 +1,10 @@
-"""Compare the integration run's CpG calls with ENCODE4's for the same replicates.
+"""Compare the validation run's CpG calls with ENCODE4's for the same replicates.
 
 ENCODE4 v1.1.6 runs gemBS on GRCh38 with its own reference and settings, so the
-calls are close, not equal. Run from the repository root after the integration
+calls are close, not equal. Run from the repository root after the validation
 run:
 
-    pixi run --manifest-path workflow/envs/pixi.toml python .tests/integration/compare_encode.py
+    pixi run --manifest-path workflow/envs/pixi.toml python .tests/validation/compare_encode.py
 """
 
 import argparse
@@ -34,7 +34,7 @@ def build_parser():
     p = argparse.ArgumentParser(description="Compare CpG calls with ENCODE's.")
     p.add_argument(
         "--run",
-        default="results/integration/encode-integration",
+        default="results/validation/encode-validation",
         help="Run directory.",
     )
     p.add_argument(
