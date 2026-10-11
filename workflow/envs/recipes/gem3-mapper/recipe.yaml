@@ -1,12 +1,13 @@
-# master, as the old Docker image built it. master is 27 commits past the
-# 3.6.1 release on bioconda, including two memory-safety fixes.
+# The gembs branch commit that gemBS-rs pins as its c_tools/gem3-mapper
+# submodule, on both its master and dev branches. Its alignment code matches
+# master's; its CLI has gemBS's --bisulfite-conversion option.
 context:
-  version: "3.6.1"
-  rev: 6e155e339adb81fafdfd3068c8b7a8a3eee087c2
+  version: "3.6.0"
+  rev: 882b0d80953fb1ec6a2f97268b56ec7aac46e4bc
 
 package:
   name: gem3-mapper
-  version: ${{ version }}.post27
+  version: ${{ version }}.gembs
 
 source:
   git: https://github.com/smarco/gem3-mapper.git
@@ -34,4 +35,4 @@ requirements:
 about:
   homepage: https://github.com/smarco/gem3-mapper
   license: GPL-3.0-only
-  summary: The GEM read mapper (v3), built from master.
+  summary: The GEM read mapper (v3), from the gembs branch that gemBS-rs uses.

@@ -151,11 +151,11 @@ second pixi workspace, `workflow/envs/`. Its `pixi.lock` pins every package.
 pixi MUST be on `PATH`.
 
 Most tools come from conda-forge and bioconda. Two are built from source by
-`pixi-build`, at the commits the earlier Docker image used:
+`pixi-build`:
 
-- gem3-mapper `master` (27 commits past the 3.6.1 release), compiled with
-  `-O3 -march=x86-64-v4`. It needs AVX-512 CPUs. The SLURM profile requests
-  cascadelake nodes for this reason.
+- gem3-mapper at `882b0d8` on its `gembs` branch, the commit gemBS-rs pins,
+  compiled with `-O3 -march=x86-64-v4`. It needs AVX-512 CPUs. The SLURM
+  profile requests cascadelake nodes for its two rules for this reason.
 - gemBS-rs `master` (`bs_call`, `mextr`). Neither is packaged on conda.
 
 Any change to a manifest, recipe, or lock reruns every rule.

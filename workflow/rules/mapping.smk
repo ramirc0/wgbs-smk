@@ -89,13 +89,14 @@ rule mapping:
 
         mkdir -p $(dirname {params.sort_prefix:q})
         gem-mapper \
-            -t {threads} \
+            --threads {threads} \
             -I {input.gem_index:q} \
-            -1 {input.r1:q} \
-            -2 {input.r2:q} \
-            -p \
-            --report-file={output.json:q} \
-            -r {params.read_group:q} \
+            --i1 {input.r1:q} \
+            --i2 {input.r2:q} \
+            --paired-end-alignment \
+            --bisulfite-conversion inferred-C2T-G2A \
+            --report-file {output.json:q} \
+            --sam-read-group-header {params.read_group:q} \
         | read_filter {input.contig_md5:q} \
         | samtools sort \
             -@ {threads} \
