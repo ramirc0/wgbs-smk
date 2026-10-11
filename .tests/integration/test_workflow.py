@@ -175,7 +175,6 @@ def test_contigs_without_chr_names(tmp_path):
     assert {line.split("\t", 1)[0] for line in body} >= {"ctg1", "ctgX"}
 
 
-@pytest.mark.xfail(strict=True, reason="extract_signal writes an empty file")
 def test_empty_strand_gives_a_valid_bigwig(tmp_path):
     """Check that a context and strand without sites still gets a bigWig."""
     track = 'track name = "S" description="S" visibility=2 itemRgb="On"\n'

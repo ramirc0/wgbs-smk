@@ -8,6 +8,7 @@ preview = ["pixi-build"]
 python = "3.12.*"
 polars = "1.*"
 pysam = "*"
+pybigwig = "*"
 samtools = "*"
 bcftools = "*"
 htslib = "*"

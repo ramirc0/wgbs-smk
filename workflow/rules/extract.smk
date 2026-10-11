@@ -74,6 +74,8 @@ rule extract_signal:
             f"{OUTDIR}/{{sample}}/{{sample}}_chh_pos.bw",
             f"{OUTDIR}/{{sample}}/{{sample}}_chh_neg.bw",
         ],
+    params:
+        tmpdir=config["tmpdir"],
     log:
         f"{LOGDIR}/extract_signal/{{sample}}.txt",
     benchmark:
@@ -84,11 +86,13 @@ rule extract_signal:
         r"""
         exec &> >(tee {log:q})
 
+        mkdir -p {params.tmpdir:q}
         python {workflow.basedir:q}/scripts/extract_signal.py \
             --bed-gz {input.bed_gz:q} \
             --chromsizes {input.chromsizes:q} \
             --output-dir $(dirname {output.bigwigs[0]:q}) \
-            --barcode {wildcards.sample:q}
+            --barcode {wildcards.sample:q} \
+            --tmpdir {params.tmpdir:q}
         """
 
 
