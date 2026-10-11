@@ -38,6 +38,10 @@ def build_parser():
         help="Run directory.",
     )
     p.add_argument(
+        "--baseline-run",
+        help="Compare with this run directory's calls instead of ENCODE's.",
+    )
+    p.add_argument(
         "--min-coverage",
         type=int,
         default=10,
@@ -70,12 +74,12 @@ def read_cpg(path):
     )
 
 
-def compare(ours, encode, min_coverage):
+def compare(ours, theirs, min_coverage):
     """Summarize the agreement of two CpG call sets.
 
     Parameters
     ----------
-    ours, encode : polars.DataFrame
+    ours, theirs : polars.DataFrame
         Calls from `read_cpg`.
     min_coverage : int
         Coverage both calls need for the methylation statistics.
@@ -88,14 +92,14 @@ def compare(ours, encode, min_coverage):
         coverage-weighted mean methylation.
     """
     key = ["chrom", "start", "strand"]
-    both = ours.join(encode, on=key, suffix="_encode")
+    both = ours.join(theirs, on=key, suffix="_theirs")
     deep = both.filter(
         (pl.col("coverage") >= min_coverage)
-        & (pl.col("coverage_encode") >= min_coverage)
+        & (pl.col("coverage_theirs") >= min_coverage)
     )
     stats = deep.select(
-        pl.corr("percent", "percent_encode").alias("r_meth"),
-        (pl.col("percent") - pl.col("percent_encode")).abs().mean().alias("mad_meth"),
+        pl.corr("percent", "percent_theirs").alias("r_meth"),
+        (pl.col("percent") - pl.col("percent_theirs")).abs().mean().alias("mad_meth"),
     ).row(0, named=True)
 
     def weighted(df):
@@ -104,15 +108,15 @@ def compare(ours, encode, min_coverage):
 
     return {
         "sites_ours": ours.height,
-        "sites_encode": encode.height,
+        "sites_theirs": theirs.height,
         "shared_of_ours": both.height / ours.height,
-        "shared_of_encode": both.height / encode.height,
-        "r_coverage": both.select(pl.corr("coverage", "coverage_encode")).item(),
+        "shared_of_theirs": both.height / theirs.height,
+        "r_coverage": both.select(pl.corr("coverage", "coverage_theirs")).item(),
         f"sites_cov{min_coverage}": deep.height,
         "r_meth": stats["r_meth"],
         "mad_meth": stats["mad_meth"],
         "mean_meth_ours": weighted(ours),
-        "mean_meth_encode": weighted(encode),
+        "mean_meth_theirs": weighted(theirs),
     }
 
 
@@ -122,12 +126,13 @@ def main():
     rows = []
     for sample, encode_file in ENCODE_CPG.items():
         ours = Path(args.run) / sample / f"{sample}_cpg.bed.gz"
+        theirs = ENCODE_DATA / encode_file
+        if args.baseline_run:
+            theirs = Path(args.baseline_run) / sample / f"{sample}_cpg.bed.gz"
         if not ours.exists():
             print(f"{sample}: no {ours}, skipped")
             continue
-        stats = compare(
-            read_cpg(ours), read_cpg(ENCODE_DATA / encode_file), args.min_coverage
-        )
+        stats = compare(read_cpg(ours), read_cpg(theirs), args.min_coverage)
         rows.append({"sample": sample, **stats})
     with pl.Config(tbl_rows=-1, tbl_cols=-1, tbl_width_chars=200, float_precision=4):
         print(pl.DataFrame(rows))
