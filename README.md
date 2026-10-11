@@ -187,6 +187,9 @@ These behaviors carry over unchanged from the pre-template pipeline (git tag
   depends on the locale.
 - `calling` removes the staged FASTA twice and leaves the FASTA index,
   chromsizes and its outputs in `tmpdir`.
+- Each `calling` job copies the whole BAM to `tmpdir`, once per contig. A
+  146 GB BAM filled the 220 GB `/tmp` of a cascadelake node running two such
+  jobs. Retries on other nodes passed.
 - Several files are written but not declared as outputs: the merged BAM's
   `.csi`, `<s>.json`, the methylC `.tbi`, and the `mextr` `.md5`, `.tbi` and
   `.bb` files.
