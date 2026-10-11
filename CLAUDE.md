@@ -28,6 +28,7 @@ pixi run snakemake --profile profiles/slurm --configfile .tests/validation/confi
 - Shell blocks MUST call scripts as `{workflow.basedir:q}/scripts/x.py`. A cwd-relative path breaks `--directory`.
 - `.smk` files are not linted. Keep helper docstrings numpydoc by hand.
 - The read group needs real tab characters. Build it in `read_group()`, never inside an `r"""` shell block.
+- mextr reads its outputs back while writing them. On CephFS the reads come back short, so `gembs_extract` stages them in `tmpdir`. The toy tests run on local disk and cannot catch this.
 - `seqkit split2 -f` wipes its output dir. Keep the split FASTQs in their own `split/` dir.
 - gem3-mapper is built with `-march=x86-64-v4`. It needs AVX-512 nodes.
 - The login shell exports `CFLAGS=-O3 -march=x86-64-v4`. A PyPI package with no wheel for our python gets built with it and crashes on broadwell nodes. Take such packages from conda-forge. `.tests/unit/test_envs.py` checks this.

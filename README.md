@@ -109,7 +109,8 @@ The workflow stops with this hint when it finds the old names.
 
 - `samples`, `outdir`, `run_id`, `pixi_env`: as in the template.
 - `tmpdir`: node-local scratch for `samtools sort` and `gem-indexer` temporary
-  files.
+  files and the `mextr` outputs. `mextr` reads its outputs back as it writes
+  them, which fails on CephFS.
 - `references.reference`: reference FASTA, plain or gzipped.
 - `assembly`, `species` (optional): `AS` and `SP` tags of the SAM sequence
   dictionary. `species` MUST NOT contain whitespace.
