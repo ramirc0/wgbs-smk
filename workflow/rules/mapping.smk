@@ -6,10 +6,12 @@ rule split:
         # seqkit -f wipes this directory, so it holds nothing else.
         dir=directory(f"{OUTDIR}/{{sample}}/split"),
         fastqs=expand(
-            f"{OUTDIR}/{{{{sample}}}}/split/MOHD_{{{{sample}}}}_{{read}}.part_{{part}}.fastq.gz",
+            f"{OUTDIR}/{{{{sample}}}}/split/{{{{sample}}}}_{{read}}.part_{{part}}.fastq.gz",
             part=SPLIT,
             read=["R1", "R2"],
         ),
+    params:
+        stage=lambda w: f"{config['tmpdir']}/{OUTDIR}/split/{w.sample}",
     log:
         f"{LOGDIR}/split/{{sample}}.txt",
     benchmark:
@@ -22,13 +24,20 @@ rule split:
 
         echo "$(date): Rule started"
 
+        # seqkit names the parts after its inputs. --by-part-prefix is a no-op in 2.11.
+        STAGE={params.stage:q}
+        mkdir -p "$STAGE"
+        ln -sf "$(realpath {input.r1:q})" "$STAGE"/{wildcards.sample:q}_R1.fastq.gz
+        ln -sf "$(realpath {input.r2:q})" "$STAGE"/{wildcards.sample:q}_R2.fastq.gz
+
         seqkit split2 \
-            -1 {input.r1:q} \
-            -2 {input.r2:q} \
+            -1 "$STAGE"/{wildcards.sample:q}_R1.fastq.gz \
+            -2 "$STAGE"/{wildcards.sample:q}_R2.fastq.gz \
             -O {output.dir:q} \
             -p 2 \
             -j {threads} \
             -f
+        rm -rf "$STAGE"
 
         echo "$(date): Rule finished"
         """
@@ -37,8 +46,8 @@ rule split:
 rule mapping:
     input:
         gem_index=f"{REFDIR}/reference.gem",
-        r1=f"{OUTDIR}/{{sample}}/split/MOHD_{{sample}}_R1.part_{{part}}.fastq.gz",
-        r2=f"{OUTDIR}/{{sample}}/split/MOHD_{{sample}}_R2.part_{{part}}.fastq.gz",
+        r1=f"{OUTDIR}/{{sample}}/split/{{sample}}_R1.part_{{part}}.fastq.gz",
+        r2=f"{OUTDIR}/{{sample}}/split/{{sample}}_R2.part_{{part}}.fastq.gz",
     output:
         bam=f"{OUTDIR}/{{sample}}/{{sample}}.{{part}}.bam",
         json=f"{OUTDIR}/{{sample}}/{{sample}}.{{part}}.json",

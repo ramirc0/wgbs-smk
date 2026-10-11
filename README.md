@@ -98,9 +98,7 @@ One row per sample. Lines starting with `#` are ignored.
 
 - `sample_id`: unique ID, letters and digits only.
 - `dataset`: dataset or run name. It fills the read group `ID` and `PU`.
-- `fastq_1`, `fastq_2`: paired FASTQ paths. Their basenames MUST be
-  `MOHD_<sample_id>_R1.fastq.gz` and `MOHD_<sample_id>_R2.fastq.gz` (see
-  known issues).
+- `fastq_1`, `fastq_2`: paired, gzipped FASTQ paths.
 
 ### Configuration
 
@@ -143,7 +141,7 @@ Per sample, under `results/<run_id>/<sample>/`:
 
 | Files | Step |
 |---|---|
-| `split/MOHD_<s>_R{1,2}.part_NNN.fastq.gz` | FASTQ parts for parallel mapping |
+| `split/<s>_R{1,2}.part_NNN.fastq.gz` | FASTQ parts for parallel mapping |
 | `<s>.NNN.bam`, `<s>.NNN.json` | Per-part alignments (SAM text) and gem-mapper reports |
 | `<s>.merged.bam` | Merged, sorted alignments |
 | `<s>.bam`, `.bam.csi`, `.bam.md5`, `<s>.json` | Final alignments and the mapping QC JSON with average coverage |
@@ -180,8 +178,6 @@ These behaviors carry over unchanged from the pre-template pipeline (git tag
 
 - `split` always passes `-p 2` to `seqkit split2`. Any `fastq_split` other
   than 2 fails with missing outputs.
-- `split` outputs assume FASTQ basenames `MOHD_<sample_id>_R{1,2}.fastq.gz`.
-  Other names fail with missing outputs.
 - `indexing` fails if the reference's basename is `reference.fasta`: `mv` onto
   itself errors.
 - `CONTIGS` hardcodes human chromosomes (chr1-22, X, Y, Pool). A reference
