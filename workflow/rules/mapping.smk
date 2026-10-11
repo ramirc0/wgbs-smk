@@ -194,21 +194,20 @@ rule get_coverage:
         r"""
         exec &> >(tee {log:q})
 
-        echo "$(date): Rule started"
+        # One genomecov per contig. -k keeps the BAM's contig order, so each
+        # bedGraph equals a single pass over the whole BAM.
+        strands=(- +)
+        bedgraphs=({output.coverage_bedgraphs:q})
+        for i in 0 1; do
+            parallel -k -j {threads} \
+                "set -o pipefail; samtools view -u {input.bam:q} {{}} | bedtools genomecov -ibam stdin -bg -strand ${{strands[$i]}}" \
+                :::: <(cut -f1 {input.chromsizes:q}) \
+                > "${{bedgraphs[$i]}}"
+        done
 
-        echo "$(date --iso=seconds): Running bedtools genomecov"
-        parallel \
-            -j 2 \
-            bedtools genomecov -ibam {input.bam:q} -bg -strand {{1}} '>' {{2}} \
-            ::: - + \
-            :::+ {output.coverage_bedgraphs:q}
-
-        echo "$(date --iso=seconds): Running bedGraphToBigWig"
         parallel \
             -j 2 \
             bedGraphToBigWig {{1}} {input.chromsizes:q} {{2}} \
             ::: {output.coverage_bedgraphs:q} \
             :::+ {output.coverage_bigwigs:q}
-
-        echo "$(date): Rule finished"
         """

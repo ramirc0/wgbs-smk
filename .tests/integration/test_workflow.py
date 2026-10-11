@@ -200,6 +200,21 @@ def test_empty_strand_gives_a_valid_bigwig(tmp_path):
             ] == BIGWIG_MAGIC
 
 
+def test_coverage_matches_one_genomecov_pass(run, tmp_path):
+    """Check that per-contig coverage equals one bedtools genomecov pass per strand."""
+    bam = run / PREFIX / "S001/S001.bam"
+    sizes = run / "results/refs/chromsizes.tsv"
+    for strand, name in (("-", "neg"), ("+", "pos")):
+        bedgraph = tmp_path / f"{name}.bg"
+        bedgraph.write_text(
+            tool("bedtools", "genomecov", "-ibam", bam, "-bg", "-strand", strand)
+        )
+        bigwig = tmp_path / f"{name}.bw"
+        tool("bedGraphToBigWig", bedgraph, sizes, bigwig)
+        ours = run / PREFIX / f"S001/S001_coverage_{name}.bw"
+        assert bigwig.read_bytes() == ours.read_bytes()
+
+
 @pytest.mark.parametrize("name", ["S001", "S002"])
 def test_every_sample_finishes(run, name):
     """Check that each sample gets its methylC file."""
