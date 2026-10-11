@@ -17,6 +17,7 @@ pixi run snakemake --profile profiles/local
 - Root `pixi.toml` is the launcher: Snakemake and its plugins, plus the `lint` env.
 - `workflow/envs/pixi.toml` is the rule env. Rule dependencies go there, never in the root.
 - gem3-mapper and gemBS-rs are `pixi-build` source packages in `workflow/envs/recipes/`. They compile on first install.
+- A checkout that touches `workflow/envs/` makes pixi rebuild both source packages. Concurrent jobs then race in one `.pixi/bld/<pkg>/<hash>` dir and break it. Delete that dir and run `pixi install --locked` in `workflow/envs/` before launching.
 - Rules use `locked=True`. After a manifest or recipe edit, run `pixi lock` in `workflow/envs/`.
 - `SOFTWARE_ENV` resolves `../envs` relative to the rule file. New rule files MUST sit in `workflow/rules/`.
 
