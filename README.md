@@ -9,7 +9,7 @@ extracts bedMethyl, methylC and bigWig tracks with `mextr`. It follows the
 ## Layout
 
 ```
-.tests/integration/      config + toy inputs for the end-to-end test
+.tests/fixture/          config + toy inputs for `pixi run test`
 config/
   config.yaml.template   parameters + paths; copy to config.yaml (gitignored)
   samples.example.tsv    one row per sample: sample_id, dataset, fastq_1, fastq_2
