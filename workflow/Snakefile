@@ -16,3 +16,4 @@ rule all:
             for strand in ("neg", "pos")
         ],
         [f"{prefix(s)}_methylc.bed.gz" for s in SAMPLES],
+        [f"{prefix(s)}.json" for s in SAMPLES],

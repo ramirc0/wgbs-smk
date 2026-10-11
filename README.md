@@ -167,9 +167,9 @@ Per sample, under `results/<run_id>/<sample>/`:
 | Files | Step |
 |---|---|
 | `split/<s>_R{1,2}.part_NNN.fastq.gz` | FASTQ parts for parallel mapping |
-| `<s>.NNN.bam`, `<s>.NNN.json` | Per-part alignments (SAM text) and gem-mapper reports |
-| `<s>.merged.bam` | Merged, sorted alignments |
-| `<s>.bam`, `.bam.csi`, `.bam.md5`, `<s>.json` | Final alignments and the mapping QC JSON with average coverage |
+| `<s>.NNN.bam` (+ `.csi`), `<s>.NNN.json` | Per-part sorted alignments and gem-mapper reports |
+| `<s>.bam`, `.bam.csi`, `.bam.md5` | Final alignments |
+| `<s>.json` | Mapping QC: gem-mapper reports, `samtools stats` and average coverage |
 | `<s>_coverage_{neg,pos}.{bg,bw}` | Strand-specific coverage |
 | `<s>_<contig>.json` | Per-contig `bs_call` reports |
 | `<s>.bcf`, `.bcf.csi`, `.bcf.md5` | Whole-genome methylation calls |
@@ -186,9 +186,10 @@ index `reference.gem`.
 1. **indexing**: decompress the reference, index it, write chromsizes and the contig metadata.
 2. **gem_indexer**: build the GEM bisulfite index.
 3. **split**: split each FASTQ pair with `seqkit split2`.
-4. **mapping**: map each part with `gem-mapper`.
-5. **merge**: merge and sort the parts.
-6. **postprocess**: clean read names, sort, checksum, and add average coverage to the QC JSON.
+4. **mapping**: map each part with `gem-mapper`, clean read names and add the
+   contig metadata with gemBS's `read_filter`, and sort, as gemBS does.
+5. **merge**: merge the sorted parts into one read group and checksum the BAM.
+6. **bam_qc**: write the mapping QC JSON with `samtools stats` and average coverage.
 7. **get_coverage**: strand coverage with `bedtools genomecov` and `bedGraphToBigWig`.
 8. **generate_chrome_ctgs**: one contig BED per main chromosome, plus a `Pool` of the rest.
 9. **calling**: `bs_call` per contig.
@@ -214,9 +215,8 @@ These behaviors carry over unchanged from the pre-template pipeline (git tag
 - Each `calling` job copies the whole BAM to `tmpdir`, once per contig. A
   146 GB BAM filled the 220 GB `/tmp` of a cascadelake node running two such
   jobs. Retries on other nodes passed.
-- Several files are written but not declared as outputs: the merged BAM's
-  `.csi`, `<s>.json`, the methylC `.tbi`, and the `mextr` `.md5`, `.tbi` and
-  `.bb` files.
+- Several files are written but not declared as outputs: the methylC `.tbi`,
+  and the `mextr` `.md5`, `.tbi` and `.bb` files.
 - `extract_signal` writes an empty file in place of a bigWig for a strand with
   no sites.
 - Split FASTQs and per-part BAMs are kept, which doubles the input size on disk.

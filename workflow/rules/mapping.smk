@@ -46,13 +46,16 @@ rule split:
 rule mapping:
     input:
         gem_index=f"{REFDIR}/reference.gem",
+        contig_md5=f"{REFDIR}/reference.contig_md5",
         r1=f"{OUTDIR}/{{sample}}/split/{{sample}}_R1.part_{{part}}.fastq.gz",
         r2=f"{OUTDIR}/{{sample}}/split/{{sample}}_R2.part_{{part}}.fastq.gz",
     output:
         bam=f"{OUTDIR}/{{sample}}/{{sample}}.{{part}}.bam",
+        bam_csi=f"{OUTDIR}/{{sample}}/{{sample}}.{{part}}.bam.csi",
         json=f"{OUTDIR}/{{sample}}/{{sample}}.{{part}}.json",
     params:
         read_group=lambda w: read_group(w.sample),
+        sort_prefix=lambda w: f"{config['tmpdir']}/{w.sample}.{w.part}",
     log:
         f"{LOGDIR}/mapping/{{sample}}.{{part}}.txt",
     benchmark:
@@ -63,8 +66,7 @@ rule mapping:
         r"""
         exec &> >(tee {log:q})
 
-        echo "$(date): Rule started"
-
+        mkdir -p $(dirname {params.sort_prefix:q})
         gem-mapper \
             -t {threads} \
             -I {input.gem_index:q} \
@@ -72,9 +74,14 @@ rule mapping:
             -2 {input.r2:q} \
             -p \
             --report-file={output.json:q} \
-            -r {params.read_group:q} > {output.bam:q}
-
-        echo "$(date): Rule finished"
+            -r {params.read_group:q} \
+        | read_filter {input.contig_md5:q} \
+        | samtools sort \
+            -@ {threads} \
+            -T {params.sort_prefix:q} \
+            --write-index \
+            -o {output.bam:q}##idx##{output.bam_csi:q} \
+            -
         """
 
 
@@ -82,7 +89,9 @@ rule merge:
     input:
         bams=expand(f"{OUTDIR}/{{{{sample}}}}/{{{{sample}}}}.{{part}}.bam", part=SPLIT),
     output:
-        bam=f"{OUTDIR}/{{sample}}/{{sample}}.merged.bam",
+        bam=f"{OUTDIR}/{{sample}}/{{sample}}.bam",
+        bam_csi=f"{OUTDIR}/{{sample}}/{{sample}}.bam.csi",
+        md5=f"{OUTDIR}/{{sample}}/{{sample}}.bam.md5",
     log:
         f"{LOGDIR}/merge/{{sample}}.txt",
     benchmark:
@@ -93,64 +102,41 @@ rule merge:
         r"""
         exec &> >(tee {log:q})
 
-        echo "$(date): Rule started"
-
+        # -c and -p keep one @RG and @PG per dataset: every part has the same IDs.
         samtools merge \
-            -@ {threads} \
-            -o - \
-            {input.bams:q} | \
-        samtools sort \
+            -c \
+            -p \
             -@ {threads} \
             --write-index \
-            -T /tmp/{wildcards.sample:q} \
-            -o {output.bam:q} -
-
-        echo "$(date): Rule finished"
+            -o {output.bam:q}##idx##{output.bam_csi:q} \
+            {input.bams:q}
+        md5sum {output.bam:q} > {output.md5:q}
         """
 
 
-rule postprocess:
+rule bam_qc:
     input:
-        bam=f"{OUTDIR}/{{sample}}/{{sample}}.merged.bam",
+        bam=f"{OUTDIR}/{{sample}}/{{sample}}.bam",
         jsons=expand(f"{OUTDIR}/{{{{sample}}}}/{{{{sample}}}}.{{part}}.json", part=SPLIT),
         chromsizes=f"{REFDIR}/chromsizes.tsv",
     output:
-        bam=f"{OUTDIR}/{{sample}}/{{sample}}.bam",
-        bam_csi=f"{OUTDIR}/{{sample}}/{{sample}}.bam.csi",
-        md5=f"{OUTDIR}/{{sample}}/{{sample}}.bam.md5",
+        json=f"{OUTDIR}/{{sample}}/{{sample}}.json",
     log:
-        f"{LOGDIR}/postprocess/{{sample}}.txt",
+        f"{LOGDIR}/bam_qc/{{sample}}.txt",
     benchmark:
-        f"{BENCHDIR}/postprocess/{{sample}}.tsv",
+        f"{BENCHDIR}/bam_qc/{{sample}}.tsv",
     software:
         SOFTWARE_ENV
     shell:
         r"""
         exec &> >(tee {log:q})
 
-        echo "$(date): Rule started"
-
-        python {workflow.basedir:q}/scripts/read_filter.py \
-            -i {input.bam:q} \
-            {input.chromsizes:q} | \
-        samtools sort \
-            -o {output.bam:q} \
-            -T /tmp/{wildcards.sample:q} \
-            --threads {threads} \
-            --write-index -
-        echo "$(date): gem-mapper completed"
-
-        md5sum {output.bam:q} > {output.md5:q}
-        echo "$(date): md5sum completed"
-
         python {workflow.basedir:q}/scripts/make_average_coverage.py \
-            --bamfile {output.bam:q} \
+            --bamfile {input.bam:q} \
             --chromsizes {input.chromsizes:q} \
             --threads {threads} \
-            --gem_mapper_jsons {input.jsons:q}
-        echo "$(date): average coverage completed"
-
-        echo "$(date): Rule finished"
+            --gem_mapper_jsons {input.jsons:q} \
+            --output {output.json:q}
         """
 
 

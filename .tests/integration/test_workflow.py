@@ -54,9 +54,6 @@ def header(bam, kind):
     return [line.split("\t") for line in lines if line.startswith(kind + "\t")]
 
 
-@pytest.mark.xfail(
-    strict=True, reason="samtools merge renames the colliding @RG of each part"
-)
 def test_one_read_group_per_dataset(run):
     """Check that merging the FASTQ parts keeps a single read group per dataset."""
     bam = run / PREFIX / "S001/S001.bam"
@@ -67,9 +64,6 @@ def test_one_read_group_per_dataset(run):
     }
 
 
-@pytest.mark.xfail(
-    strict=True, reason="read_filter.py gets chromsizes, not contig metadata"
-)
 def test_sq_lines_carry_md5_assembly_and_species(run):
     """Check that read_filter adds M5, AS and SP to the BAM's @SQ lines, as gemBS does."""
     contigs = fasta_contigs(FIXTURE / "resources/genome.fa.gz")

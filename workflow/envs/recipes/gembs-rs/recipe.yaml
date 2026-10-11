@@ -1,5 +1,5 @@
-# bs_call and mextr from gemBS-rs master, unchanged since 2022, as the old
-# Docker image built them. Neither tool is packaged on conda.
+# bs_call, mextr and read_filter from gemBS-rs master, unchanged since 2022, as
+# the old Docker image built them. None is packaged on conda.
 context:
   version: "4.0.4"
   rev: 9d2e5e6e27b5f2915dcbeccc657326368b6f996d
@@ -23,6 +23,7 @@ build:
     # pixi-build reuses the host prefix on a rebuild. --force overwrites the old binaries.
     - cargo install --locked --no-track --force --root "$PREFIX" --path bs_call
     - cargo install --locked --no-track --force --root "$PREFIX" --path mextr
+    - cargo install --locked --no-track --force --root "$PREFIX" --path read_filter
 
 requirements:
   build:
@@ -35,4 +36,4 @@ requirements:
 about:
   homepage: https://github.com/heathsc/gemBS-rs
   license: BSD-3-Clause
-  summary: bs_call and mextr from gemBS-rs.
+  summary: bs_call, mextr and read_filter from gemBS-rs.
