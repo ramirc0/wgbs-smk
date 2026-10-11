@@ -7,7 +7,7 @@ the layout, idioms, conventions, and known issues. Follow it.
 
 ```bash
 pixi run lint                                # ruff check, ruff format --check, numpydoc lint
-pixi run test                                # pytest; toy runs in scratch copies of .tests/integration
+pixi run test                                # pytest over .tests; toy runs in scratch copies of .tests/integration
 pixi run snakemake -n -p --profile profiles/local
 pixi run snakemake --profile profiles/local
 pixi run snakemake --profile profiles/slurm --configfile .tests/validation/config.yaml  # ENCODE validation run
@@ -31,8 +31,9 @@ pixi run snakemake --profile profiles/slurm --configfile .tests/validation/confi
 - `seqkit split2 -f` wipes its output dir. Keep the split FASTQs in their own `split/` dir.
 - gem3-mapper is built with `-march=x86-64-v4`. It needs AVX-512 nodes.
 - The rule env pins polars 2.x. The scripts read mextr's headerless bedMethyl by column index.
-- `/` on this host is nearly full. Point `TMPDIR` at a `/home` path for builds and test runs. Do not set it for a SLURM launch: jobs inherit it as `resources.tmpdir`.
-- Known issues in README.md are kept on purpose for parity with the `pre-template` tag. Fix one only with a test that shows it.
+- Point `TMPDIR` at a roomy local path, such as `/tmp/$USER`, for builds and test runs. Do not set it for a SLURM launch: jobs inherit it as `resources.tmpdir`.
+- gem-mapper learns insert sizes per thread, so alignments can shift with the thread count. Compare runs with different threads or `fastq_split` at the methylation level.
+- Fix a bug only after a test that shows it. Known issues in README.md come from gemBS-rs.
 
 ## Verifying a change
 
@@ -40,4 +41,4 @@ pixi run snakemake --profile profiles/slurm --configfile .tests/validation/confi
 New rules or inputs MUST get matching test inputs there.
 For a big change, run the validation on SLURM, then `.tests/validation/compare_encode.py`.
 
-To check faithfulness, run the same inputs through a `pre-template` worktree and compare the normalized BAM, BCF, bed, and bigWig contents.
+To check faithfulness, snapshot the toy outputs before a change, or run a `post-template` worktree, and compare the normalized BAM, BCF, bed, and bigWig contents.

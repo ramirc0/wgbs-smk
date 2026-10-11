@@ -11,6 +11,7 @@ extracts bedMethyl, methylC and bigWig tracks with `mextr`. It follows the
 ```
 .tests/
   integration/           toy genome + reads, run by `pixi run test`
+  unit/                  script unit tests, run by `pixi run test`
   validation/            four ENCODE replicates on GRCh38, compared with ENCODE4's calls
 config/
   config.yaml.template   parameters + paths; copy to config.yaml (gitignored)
@@ -20,7 +21,7 @@ workflow/
   rules/
     common.smk           config, sample sheet, path constants, helpers
     indexing.smk         reference FASTA, chromsizes, contig metadata, GEM index
-    mapping.smk          split, map, merge, filter, strand coverage
+    mapping.smk          split, map, merge, mapping QC, strand coverage
     call.smk             contig pools, per-pool bs_call, merged BCF
     extract.smk          mextr, strand bigWigs, methylC
   scripts/               argparse scripts, each with build_parser() + main()
@@ -41,8 +42,8 @@ pyproject.toml           ruff + numpydoc config
   reference artifacts are run-independent and go in `results/refs/`.
 - **Sample sheet** is a TSV read once in `common.smk` into `SHEET`, one row
   dict per `sample_id`.
-- **Config -> flags**: helpers such as `call_flags()`, `extract_flags()` and `dict_flags()` turn
-  `config` into flag lists. `read_group()` builds the gem-mapper `@RG` line.
+- **Config -> flags**: helpers such as `call_flags()`, `extract_flags()` and
+  `dict_flags()` turn `config` into flag lists. `read_group()` builds the gem-mapper `@RG` line.
 - **Every rule** carries `log:`, `benchmark:`, and `software:`.
 
 ## Conventions
@@ -99,6 +100,10 @@ One row per sample. Lines starting with `#` are ignored.
 - `sample_id`: unique ID, letters and digits only.
 - `dataset`: dataset or run name. It fills the read group `ID` and `PU`.
 - `fastq_1`, `fastq_2`: paired, gzipped FASTQ paths.
+
+Sheets from before the template port (git tag `pre-template`) name these
+columns `Barcode`, `Dataset`, `File1` and `File2`. Rename them in that order.
+The workflow stops with this hint when it finds the old names.
 
 ### Configuration
 
@@ -177,10 +182,12 @@ Per sample, under `results/<run_id>/<sample>/`:
 | `<s>_{cpg,chg,chh}_{pos,neg}.bw` | Methylation level per context and strand |
 | `<s>_methylc.bed.gz` (+ `.tbi`) | Combined CG/CHG/CHH methylC file |
 
-`results/refs/` holds `reference.fasta` (+ `.fai`), `chromsizes.tsv`, the pool
-BEDs and their order in `pools/`,
-`reference.contig_md5` (LN, M5, AS and SP per contig, as in gemBS) and the GEM
-index `reference.gem`.
+`results/refs/` holds:
+
+- `reference.fasta` (+ `.fai`) and `chromsizes.tsv`;
+- `reference.contig_md5`, the LN, M5, AS and SP tags per contig, as in gemBS;
+- the GEM index `reference.gem` and its `reference.info`;
+- `pools/`, one BED per `bs_call` job and their order in `pools.txt`.
 
 ## Pipeline steps
 
@@ -200,6 +207,20 @@ index `reference.gem`.
 11. **gembs_extract**: `mextr` bedMethyl, CpG/non-CpG and bigWig outputs.
 12. **extract_signal**: methylation-level bigWigs per context and strand.
 13. **get_methylc**: combine the three contexts into one sorted, indexed methylC file.
+
+## Differences from gemBS-rs
+
+The steps from indexing to `mextr` run gemBS-rs's commands with its
+`IHEC_standard.conf` values. They differ in these ways:
+
+| gemBS-rs | Here |
+|---|---|
+| One sample can merge several datasets | One FASTQ pair per sample, optionally split into parts |
+| bgzipped reference copy (`gemBS.ref`) | Plain FASTA copy. `bs_call` reads both the same way |
+| M5 hashes the raw sequence bytes; AS and SP come from FASTA headers | `samtools dict`: M5 of the uppercased sequence, AS and SP from the config |
+| Pool BCFs concatenated in file-name order | Concatenated in reference order |
+| `--regions-file` lists every contig for `mextr` | No regions file; `mextr` reads the same contigs |
+| HTML and LaTeX QC reports, merged call JSON | ENCODE-style mapping QC JSON, coverage and per-context bigWigs, methylC |
 
 ## Known issues
 
