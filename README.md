@@ -123,8 +123,8 @@ One row per sample. Lines starting with `#` are ignored.
 ## Tests
 
 `pixi run test` runs every rule on the toy data in `.tests/integration/`: 2 kb
-of each contig in `CONTIGS` plus one alt contig, and two samples of simulated
-directional bisulfite reads with 80% CpG methylation.
+of chr1-22, X, Y and one alt contig, a 1 kb chrM without reads, and two samples
+of simulated directional bisulfite reads with 80% CpG methylation.
 
 The validation runs four ENCODE WGBS replicates end to end on full GRCh38: two
 each of K562 (ENCSR765JPC) and GM12878 (ENCSR890UQO). Its inputs live on the

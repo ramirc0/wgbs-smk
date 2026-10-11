@@ -37,7 +37,7 @@ pixi run snakemake --profile profiles/slurm --configfile .tests/validation/confi
 
 ## Verifying a change
 
-`pixi run test` runs every rule on the toy data in `.tests/integration/`: every contig in `CONTIGS` plus one alt contig, and two samples of directional bisulfite reads with 80% CpG methylation.
+`pixi run test` runs every rule on the toy data in `.tests/integration/`: 2 kb of chr1-22, X, Y and one alt contig, a 1 kb chrM without reads, and two samples of directional bisulfite reads with 80% CpG methylation.
 New rules or inputs MUST get matching test inputs there.
 For a big change, run the validation on SLURM, then `.tests/validation/compare_encode.py`.
 
