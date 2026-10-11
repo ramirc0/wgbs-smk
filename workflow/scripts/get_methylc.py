@@ -3,49 +3,63 @@
 import argparse
 import os
 import subprocess
-from collections import defaultdict
+import tempfile
 from pathlib import Path
 
 import polars as pl
 
+# mextr's bedMethyl columns, of which methylC keeps six.
+BED_SCHEMA = {
+    "chr": pl.Utf8,
+    "start": pl.UInt32,
+    "end": pl.UInt32,
+    "name": pl.Utf8,
+    "score": pl.UInt16,
+    "strand": pl.Utf8,
+    "thick_start": pl.UInt32,
+    "thick_end": pl.UInt32,
+    "color": pl.Utf8,
+    "coverage": pl.UInt32,
+    "methylation_level": pl.Float32,
+    "ref_genotype": pl.Utf8,
+    "sample_genotype": pl.Utf8,
+    "quality_score": pl.Float32,
+}
 
-def read_bedmethyl(bed_gz_path):
-    """Read a gzipped bedMethyl file, skipping its track line.
+
+def read_methylc(bed_gz, context):
+    """Read a bedMethyl file as methylC rows.
 
     Parameters
     ----------
-    bed_gz_path : str
-        Gzipped bedMethyl file.
+    bed_gz : str
+        Gzipped bedMethyl file with a track line.
+    context : str
+        Value of the `type` column, such as ``CG``.
 
     Returns
     -------
     polars.DataFrame
-        One row per site. `methylation_level` is a fraction, not a percentage.
+        Columns `chr`, `start`, `end`, `type`, `methylation_level` (a fraction),
+        `strand` and `coverage`, in file order.
     """
-    bed_schema = {
-        "chr": pl.Utf8,
-        "start": pl.UInt32,
-        "end": pl.UInt32,
-        "name": pl.Utf8,
-        "score": pl.UInt16,
-        "strand": pl.Utf8,
-        "thick_start": pl.UInt32,
-        "thick_end": pl.UInt32,
-        "color": pl.Utf8,
-        "coverage": pl.UInt32,
-        "methylation_level": pl.Float32,
-        "ref_genotype": pl.Utf8,
-        "sample_genotype": pl.Utf8,
-        "quality_score": pl.Float32,
-    }
-
     df = pl.read_csv(
-        bed_gz_path, separator="\t", has_header=False, skip_rows=1, schema=bed_schema
-    ).with_columns(
-        pl.col("methylation_level") / 100,
+        bed_gz,
+        separator="\t",
+        has_header=False,
+        skip_rows=1,
+        schema=BED_SCHEMA,
+        columns=[0, 1, 2, 5, 9, 10],
     )
-
-    return df
+    return df.select(
+        "chr",
+        "start",
+        "end",
+        pl.lit(context).alias("type"),
+        pl.col("methylation_level") / 100,
+        "strand",
+        "coverage",
+    )
 
 
 def build_parser():
@@ -61,15 +75,17 @@ def build_parser():
     parser.add_argument("--chh", required=True, help="CHH bedMethyl file.")
     parser.add_argument("--chg", required=True, help="CHG bedMethyl file.")
     parser.add_argument("--cpg", required=True, help="CpG bedMethyl file.")
-    parser.add_argument(
-        "--threads", default=1, type=int, help="bgzip and tabix threads."
-    )
+    parser.add_argument("--threads", default=1, type=int, help="Threads for bgzip.")
     parser.add_argument("--outdir", required=True, type=Path, help="Output directory.")
+    parser.add_argument("--tmpdir", default=None, help="Directory for the parts.")
     return parser
 
 
 def main(argv=None):
     """Write `<outdir>/<barcode>_methylc.bed.gz` and its tabix index.
+
+    mextr sorts each file by contig name, then position. So a merge of the three
+    files, with sort -m, gives the fully sorted methylC file.
 
     Parameters
     ----------
@@ -77,39 +93,31 @@ def main(argv=None):
         Command-line arguments. Defaults to `sys.argv[1:]`.
     """
     args = build_parser().parse_args(argv)
-    os.makedirs(args.outdir, exist_ok=True)
-
-    methyl_type_to_methyl_file = {"CHH": args.chh, "CHG": args.chg, "CG": args.cpg}
-
-    methyl_type_to_methyl_df = defaultdict()
-    for methyl_type, methyl_file in methyl_type_to_methyl_file.items():
-        df = read_bedmethyl(methyl_file)
-        print(f"Loaded bedmethyl file for type {methyl_type}")
-        df = df.with_columns(pl.lit(methyl_type).alias("type"))
-        df = df.select(
-            "chr", "start", "end", "type", "methylation_level", "strand", "coverage"
+    args.outdir.mkdir(parents=True, exist_ok=True)
+    methylc = args.outdir / f"{args.barcode}_methylc.bed.gz"
+    with tempfile.TemporaryDirectory(dir=args.tmpdir) as tmp:
+        parts = []
+        for context, bed_gz in (("CHH", args.chh), ("CHG", args.chg), ("CG", args.cpg)):
+            part = Path(tmp, f"{context}.bed")
+            read_methylc(bed_gz, context).write_csv(
+                part, separator="\t", include_header=False
+            )
+            parts.append(part)
+        merge = subprocess.Popen(
+            ["sort", "-m", "-k1,1", "-k2,2n", *parts],
+            stdout=subprocess.PIPE,
+            env={**os.environ, "LC_ALL": "C"},
         )
-        methyl_type_to_methyl_df[methyl_type] = df
-
-    print("Loaded all bedmethyl files")
-
-    methylc_df = pl.concat(list(methyl_type_to_methyl_df.values()))
-    print("Concatenated bedmethyl files into methylc file")
-
-    sorted_methylc_df = methylc_df.sort(["chr", "start"], descending=[False, False])
-    print("Sorted methylc file by chr and start")
-
-    methylc_file = args.outdir / f"{args.barcode}_methylc.bed"
-    sorted_methylc_df.write_csv(methylc_file, separator="\t", include_header=False)
-    print(f"Wrote methylc file: {methylc_file}")
-
-    subprocess.check_call(f"bgzip -f -@ {args.threads} {methylc_file!s}", shell=True)
-    subprocess.check_call(
-        f"tabix -@ {args.threads} -p bed {methylc_file!s}.gz", shell=True
-    )
-    print("bgzipped and indexed methylc file")
-
-    print("Finished")
+        with open(methylc, "wb") as out:
+            subprocess.run(
+                ["bgzip", "-@", str(args.threads)],
+                stdin=merge.stdout,
+                stdout=out,
+                check=True,
+            )
+        if merge.wait() != 0:
+            raise SystemExit("sort -m failed")
+    subprocess.run(["tabix", "-p", "bed", methylc], check=True)
 
 
 if __name__ == "__main__":
