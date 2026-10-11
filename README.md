@@ -127,9 +127,14 @@ The workflow stops with this hint when it finds the old names.
 
 ## Tests
 
-`pixi run test` runs every rule on the toy data in `.tests/integration/`: 2 kb
-of chr1-22, X, Y and one alt contig, a 1 kb chrM without reads, and two samples
-of simulated directional bisulfite reads with 80% CpG methylation.
+`pixi run test` runs pytest over `.tests/`. The integration tests run every
+rule on scratch copies of the toy data in `.tests/integration/`: 2 kb of
+chr1-22, X, Y and one alt contig, a 1 kb chrM without reads, and two samples of
+simulated directional bisulfite reads with 80% CpG methylation. They check the
+BAM header and read groups, the pooling, the BCF order, the checksums, that
+every output is declared and every intermediate removed, and runs with other
+`fastq_split` values, reference names and contig names. The unit tests cover
+the contig pooling and the installed environments.
 
 The validation runs four ENCODE WGBS replicates end to end on full GRCh38: two
 each of K562 (ENCSR765JPC) and GM12878 (ENCSR890UQO). Its inputs live on the
