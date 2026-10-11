@@ -112,8 +112,9 @@ One row per sample. Lines starting with `#` are ignored.
   dictionary. `species` MUST NOT contain whitespace.
 - `index.sampling_rate`: gem-indexer text sampling rate. Lower values give a
   larger, faster index.
-- `fastq_split`: number of parts per FASTQ pair. Parts are mapped in parallel
-  and merged.
+- `fastq_split`: number of parts per FASTQ pair. With 1 (the default), one job
+  maps the pair whole, as gemBS maps a dataset. With more, `seqkit split2`
+  splits the pair and the parts are mapped in parallel and merged.
 - `calling.*`: `bs_call` output type, MAPQ and base-quality thresholds,
   reference bias, read trimming, and conversion rates
   (`under,over`, comma-delimited).
@@ -166,11 +167,10 @@ Per sample, under `results/<run_id>/<sample>/`:
 
 | Files | Step |
 |---|---|
-| `split/<s>_R{1,2}.part_NNN.fastq.gz` | FASTQ parts for parallel mapping |
-| `<s>.NNN.bam` (+ `.csi`), `<s>.NNN.json` | Per-part sorted alignments and gem-mapper reports |
+| `<s>.NNN.json` | gem-mapper report per part (`split/` FASTQs and part BAMs are temporary) |
 | `<s>.bam`, `.bam.csi`, `.bam.md5` | Final alignments |
 | `<s>.json` | Mapping QC: gem-mapper reports, `samtools stats` and average coverage |
-| `<s>_coverage_{neg,pos}.{bg,bw}` | Strand-specific coverage |
+| `<s>_coverage_{neg,pos}.bw` | Strand-specific coverage (the bedGraphs are temporary) |
 | `<s>_<contig>.json` | Per-contig `bs_call` reports |
 | `<s>.bcf`, `.bcf.csi`, `.bcf.md5` | Whole-genome methylation calls |
 | `<s>_{cpg,non_cpg}.txt.gz`, `<s>_{chg,chh,cpg}.bed.gz`, `<s>_{neg,pos}.bw` | `mextr` outputs |
@@ -203,8 +203,6 @@ index `reference.gem`.
 These behaviors carry over unchanged from the pre-template pipeline (git tag
 `pre-template`).
 
-- `split` always passes `-p 2` to `seqkit split2`. Any `fastq_split` other
-  than 2 fails with missing outputs.
 - `CONTIGS` hardcodes human chromosomes (chr1-22, X, Y, Pool). A reference
   missing any of them fails at `generate_chrome_ctgs`.
 - Contig BEDs depend only on chromsizes but are rebuilt per sample.
@@ -219,7 +217,6 @@ These behaviors carry over unchanged from the pre-template pipeline (git tag
   and the `mextr` `.md5`, `.tbi` and `.bb` files.
 - `extract_signal` writes an empty file in place of a bigWig for a strand with
   no sites.
-- Split FASTQs and per-part BAMs are kept, which doubles the input size on disk.
 - The SLURM profile keeps the old resource requests. On the ENCODE run, most
   jobs used a small part of their memory: `calling` peaked at 1.2 GB of
   250 GB, `mapping` at 35 GB of 250 GB. `merge` came closest, at 11.0 GB of

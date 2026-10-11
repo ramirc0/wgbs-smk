@@ -13,7 +13,7 @@ species: Homo_sapiens    # optional, samtools dict SP tag, no whitespace
 index:
   sampling_rate: 4       # gem-indexer --text-sampling-rate
 
-fastq_split: 2           # parts per FASTQ pair (split always passes -p 2, see README)
+fastq_split: 1           # parts per FASTQ pair; 1 maps the pair whole, as gemBS does
 
 calling:
   output_type: b         # bs_call --output-type (b: BCF, v: VCF, ...)

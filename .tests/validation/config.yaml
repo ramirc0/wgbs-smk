@@ -14,7 +14,7 @@ species: Homo_sapiens
 index:
   sampling_rate: 4
 
-fastq_split: 2
+fastq_split: 1
 
 calling:
   output_type: b

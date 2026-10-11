@@ -5,13 +5,16 @@ rule split:
     output:
         # seqkit -f wipes this directory, so it holds nothing else.
         dir=directory(f"{OUTDIR}/{{sample}}/split"),
-        fastqs=expand(
-            f"{OUTDIR}/{{{{sample}}}}/split/{{{{sample}}}}_{{read}}.part_{{part}}.fastq.gz",
-            part=SPLIT,
-            read=["R1", "R2"],
+        fastqs=temp(
+            expand(
+                f"{OUTDIR}/{{{{sample}}}}/split/{{{{sample}}}}_{{read}}.part_{{part}}.fastq.gz",
+                part=SPLIT,
+                read=["R1", "R2"],
+            )
         ),
     params:
-        stage=lambda w: f"{config['tmpdir']}/{OUTDIR}/split/{w.sample}",
+        parts=len(SPLIT),
+        tmpdir=config["tmpdir"],
     log:
         f"{LOGDIR}/split/{{sample}}.txt",
     benchmark:
@@ -22,36 +25,54 @@ rule split:
         r"""
         exec &> >(tee {log:q})
 
-        echo "$(date): Rule started"
-
         # seqkit names the parts after its inputs. --by-part-prefix is a no-op in 2.11.
-        STAGE={params.stage:q}
-        mkdir -p "$STAGE"
-        ln -sf "$(realpath {input.r1:q})" "$STAGE"/{wildcards.sample:q}_R1.fastq.gz
-        ln -sf "$(realpath {input.r2:q})" "$STAGE"/{wildcards.sample:q}_R2.fastq.gz
+        mkdir -p {params.tmpdir:q}
+        STAGE=$(mktemp -d -p {params.tmpdir:q})
+        ln -s "$(realpath {input.r1:q})" "$STAGE"/{wildcards.sample:q}_R1.fastq.gz
+        ln -s "$(realpath {input.r2:q})" "$STAGE"/{wildcards.sample:q}_R2.fastq.gz
 
         seqkit split2 \
             -1 "$STAGE"/{wildcards.sample:q}_R1.fastq.gz \
             -2 "$STAGE"/{wildcards.sample:q}_R2.fastq.gz \
             -O {output.dir:q} \
-            -p 2 \
+            -p {params.parts} \
             -j {threads} \
             -f
-        rm -rf "$STAGE"
-
-        echo "$(date): Rule finished"
+        rm -r "$STAGE"
         """
+
+
+def mapping_fastqs(wildcards):
+    """Return the FASTQ pair one mapping job reads.
+
+    Parameters
+    ----------
+    wildcards : snakemake.io.Wildcards
+        Job wildcards with `sample` and `part`.
+
+    Returns
+    -------
+    dict of str to str
+        `r1` and `r2`: the sheet's FASTQs when `fastq_split` is 1, as gemBS maps
+        a dataset whole, else the split parts.
+    """
+    if len(SPLIT) == 1:
+        return {"r1": FASTQ_1_OF[wildcards.sample], "r2": FASTQ_2_OF[wildcards.sample]}
+    split = f"{OUTDIR}/{wildcards.sample}/split/{wildcards.sample}"
+    return {
+        "r1": f"{split}_R1.part_{wildcards.part}.fastq.gz",
+        "r2": f"{split}_R2.part_{wildcards.part}.fastq.gz",
+    }
 
 
 rule mapping:
     input:
+        unpack(mapping_fastqs),
         gem_index=f"{REFDIR}/reference.gem",
         contig_md5=f"{REFDIR}/reference.contig_md5",
-        r1=f"{OUTDIR}/{{sample}}/split/{{sample}}_R1.part_{{part}}.fastq.gz",
-        r2=f"{OUTDIR}/{{sample}}/split/{{sample}}_R2.part_{{part}}.fastq.gz",
     output:
-        bam=f"{OUTDIR}/{{sample}}/{{sample}}.{{part}}.bam",
-        bam_csi=f"{OUTDIR}/{{sample}}/{{sample}}.{{part}}.bam.csi",
+        bam=temp(f"{OUTDIR}/{{sample}}/{{sample}}.{{part}}.bam"),
+        bam_csi=temp(f"{OUTDIR}/{{sample}}/{{sample}}.{{part}}.bam.csi"),
         json=f"{OUTDIR}/{{sample}}/{{sample}}.{{part}}.json",
     params:
         read_group=lambda w: read_group(w.sample),
@@ -88,10 +109,13 @@ rule mapping:
 rule merge:
     input:
         bams=expand(f"{OUTDIR}/{{{{sample}}}}/{{{{sample}}}}.{{part}}.bam", part=SPLIT),
+        csis=expand(f"{OUTDIR}/{{{{sample}}}}/{{{{sample}}}}.{{part}}.bam.csi", part=SPLIT),
     output:
         bam=f"{OUTDIR}/{{sample}}/{{sample}}.bam",
         bam_csi=f"{OUTDIR}/{{sample}}/{{sample}}.bam.csi",
         md5=f"{OUTDIR}/{{sample}}/{{sample}}.bam.md5",
+    params:
+        parts=len(SPLIT),
     log:
         f"{LOGDIR}/merge/{{sample}}.txt",
     benchmark:
@@ -102,14 +126,19 @@ rule merge:
         r"""
         exec &> >(tee {log:q})
 
-        # -c and -p keep one @RG and @PG per dataset: every part has the same IDs.
-        samtools merge \
-            -c \
-            -p \
-            -@ {threads} \
-            --write-index \
-            -o {output.bam:q}##idx##{output.bam_csi:q} \
-            {input.bams:q}
+        if [[ {params.parts} -eq 1 ]]; then
+            ln -f {input.bams:q} {output.bam:q}
+            ln -f {input.csis:q} {output.bam_csi:q}
+        else
+            # -c and -p keep one @RG and @PG per dataset: every part has the same IDs.
+            samtools merge \
+                -c \
+                -p \
+                -@ {threads} \
+                --write-index \
+                -o {output.bam:q}##idx##{output.bam_csi:q} \
+                {input.bams:q}
+        fi
         md5sum {output.bam:q} > {output.md5:q}
         """
 
@@ -145,10 +174,12 @@ rule get_coverage:
         bam=f"{OUTDIR}/{{sample}}/{{sample}}.bam",
         chromsizes=f"{REFDIR}/chromsizes.tsv",
     output:
-        coverage_bedgraphs=[
-            f"{OUTDIR}/{{sample}}/{{sample}}_coverage_neg.bg",
-            f"{OUTDIR}/{{sample}}/{{sample}}_coverage_pos.bg",
-        ],
+        coverage_bedgraphs=temp(
+            [
+                f"{OUTDIR}/{{sample}}/{{sample}}_coverage_neg.bg",
+                f"{OUTDIR}/{{sample}}/{{sample}}_coverage_pos.bg",
+            ]
+        ),
         coverage_bigwigs=[
             f"{OUTDIR}/{{sample}}/{{sample}}_coverage_neg.bw",
             f"{OUTDIR}/{{sample}}/{{sample}}_coverage_pos.bw",

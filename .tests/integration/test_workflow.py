@@ -126,19 +126,29 @@ def test_tmpdir_is_empty_after_the_run(run):
     assert list((run / "scratch").rglob("*")) == []
 
 
-@pytest.mark.xfail(strict=True, reason="split FASTQs, part BAMs and bedGraphs are kept")
 def test_intermediates_are_removed(run):
     """Check that split FASTQs, per-part BAMs and coverage bedGraphs are temporary."""
     sample = run / PREFIX / "S001"
     leftovers = [
-        *sample.glob("split/*"),
+        *sample.glob("split/*.fastq.gz"),
         *sample.glob("S001.[0-9]*.bam"),
         *sample.glob("*.bg"),
     ]
     assert leftovers == []
 
 
-@pytest.mark.xfail(strict=True, reason="split always passes -p 2")
+def test_fastq_split_one_maps_the_pair_whole(tmp_path, run):
+    """Check that fastq_split 1 maps the input pair without splitting it."""
+    path = workdir(tmp_path, [("fastq_split: 2 ", "fastq_split: 1 ")])
+    run_ok(path, f"{PREFIX}/S001/S001.bam")
+    assert not (path / PREFIX / "S001/split").exists()
+    count = [
+        tool("samtools", "view", "-c", p / PREFIX / "S001/S001.bam")
+        for p in (path, run)
+    ]
+    assert count[0] == count[1]
+
+
 def test_fastq_split_into_three_parts(tmp_path):
     """Check that fastq_split other than 2 maps every part."""
     path = workdir(tmp_path, [("fastq_split: 2 ", "fastq_split: 3 ")])
