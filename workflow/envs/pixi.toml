@@ -21,3 +21,9 @@ gembs-rs = { path = "recipes/gembs-rs", package.build.backend = { name = "pixi-b
 
 [pypi-dependencies]
 qc-utils = "*"
+
+[feature.test.dependencies]
+pytest = "*"
+
+[environments]
+test = { features = ["test"] }

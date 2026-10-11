@@ -7,7 +7,7 @@ the layout, idioms, conventions, and known issues. Follow it.
 
 ```bash
 pixi run lint                                # ruff check, ruff format --check, numpydoc lint
-pixi run test                                # full run in .tests/integration
+pixi run test                                # pytest; toy runs in scratch copies of .tests/integration
 pixi run snakemake -n -p --profile profiles/local
 pixi run snakemake --profile profiles/local
 pixi run snakemake --profile profiles/slurm --configfile .tests/validation/config.yaml  # ENCODE validation run

@@ -79,7 +79,7 @@ pixi shell                                         # launcher env
 snakemake -n -p --profile profiles/slurm           # dry run
 snakemake --profile profiles/slurm                 # SLURM
 snakemake --profile profiles/local                 # local
-pixi run test                                      # toy end-to-end test
+pixi run test                                      # toy end-to-end tests (pytest)
 ```
 
 Run from the repository root. Local runs suit small data only.
