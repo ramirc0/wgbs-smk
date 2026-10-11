@@ -5,9 +5,8 @@ rule indexing:
         fasta=f"{REFDIR}/reference.fasta",
         fasta_fai=f"{REFDIR}/reference.fasta.fai",
         chromsizes=f"{REFDIR}/chromsizes.tsv",
-        sam_dict=f"{REFDIR}/sam_dict.tsv",
+        contig_md5=f"{REFDIR}/reference.contig_md5",
     params:
-        stage=lambda w: f"{config['tmpdir']}/{REFDIR}",
         dict_flags=lambda w: dict_flags(),
     log:
         f"{LOGDIR}/indexing.txt",
@@ -19,29 +18,17 @@ rule indexing:
         r"""
         exec &> >(tee {log:q})
 
-        OUTPUT_DIR={params.stage:q}
-
-        mkdir -p "$OUTPUT_DIR"
-        cp {input.fasta:q} "$OUTPUT_DIR"
-        FASTA=$OUTPUT_DIR/$(basename {input.fasta:q})
-        if [[ "$FASTA" == *.gz ]]; then
-            unpigz -c "$FASTA" > $OUTPUT_DIR/$(basename {output.fasta:q})
+        if [[ {input.fasta:q} == *.gz ]]; then
+            unpigz -p {threads} -c {input.fasta:q} > {output.fasta:q}
         else
-            mv "$FASTA" $OUTPUT_DIR/$(basename {output.fasta:q})
+            cp {input.fasta:q} {output.fasta:q}
         fi
-        rm -rf "$FASTA"
+        samtools faidx {output.fasta:q}
+        cut -f1,2 {output.fasta_fai:q} > {output.chromsizes:q}
 
-        samtools faidx -@ {threads} $OUTPUT_DIR/$(basename {output.fasta:q})
-        cut -f1,2 $OUTPUT_DIR/$(basename {output.fasta:q}).fai > $OUTPUT_DIR/$(basename {output.chromsizes:q})
-        samtools dict \
-            -o $OUTPUT_DIR/$(basename {output.sam_dict:q}) \
-            {params.dict_flags:q} \
-            $OUTPUT_DIR/$(basename {output.fasta:q})
-
-        cp -t $(dirname {output.fasta:q}) "$OUTPUT_DIR"/*
-        rm -rf "$OUTPUT_DIR"
-
-        echo "Done!"
+        # gemBS's contig_md5 format: the @SQ fields without the record type and SN:.
+        samtools dict {params.dict_flags:q} {output.fasta:q} \
+            | sed -n 's/^@SQ\tSN://p' > {output.contig_md5:q}
         """
 
 

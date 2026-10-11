@@ -5,7 +5,7 @@ run_id: default          # outputs go under results/<run_id>/; override per run
 tmpdir: scratch          # relative to the test dir
 
 references:
-  reference: resources/genome.fa.gz       # FASTA or FASTA.gz; basename MUST NOT be reference.fasta
+  reference: resources/genome.fa.gz       # FASTA or FASTA.gz
 
 assembly: GRCh38         # optional, samtools dict AS tag
 species: Homo_sapiens    # optional, samtools dict SP tag, no whitespace

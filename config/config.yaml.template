@@ -5,7 +5,7 @@ run_id: default          # outputs go under results/<run_id>/; override per run
 tmpdir: /tmp             # node-local scratch; rules stage I/O here (needs exec, see README)
 
 references:
-  reference: resources/genome.fasta      # FASTA or FASTA.gz; basename MUST NOT be reference.fasta
+  reference: resources/genome.fasta      # FASTA or FASTA.gz
 
 assembly: GRCh38         # optional, samtools dict AS tag
 species: Homo_sapiens    # optional, samtools dict SP tag, no whitespace

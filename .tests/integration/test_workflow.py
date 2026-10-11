@@ -152,7 +152,6 @@ def test_fastq_split_into_three_parts(tmp_path):
     assert header(path / PREFIX / "S001/S001.bam", "@RG")
 
 
-@pytest.mark.xfail(strict=True, reason="indexing moves the reference onto itself")
 def test_reference_named_reference_fasta(tmp_path):
     """Check that a plain reference called reference.fasta is indexed."""
     path = workdir(tmp_path, [("resources/genome.fa.gz", "resources/reference.fasta")])

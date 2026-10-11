@@ -19,7 +19,7 @@ workflow/
   Snakefile              includes the rules + rule all
   rules/
     common.smk           config, sample sheet, path constants, helpers
-    indexing.smk         reference FASTA, chromsizes, SAM dict, GEM index
+    indexing.smk         reference FASTA, chromsizes, contig metadata, GEM index
     mapping.smk          split, map, merge, filter, strand coverage
     call.smk             per-contig bs_call, merged BCF
     extract.smk          mextr, strand bigWigs, methylC
@@ -178,11 +178,12 @@ Per sample, under `results/<run_id>/<sample>/`:
 | `<s>_methylc.bed.gz` (+ `.tbi`) | Combined CG/CHG/CHH methylC file |
 
 `results/refs/` holds `reference.fasta` (+ `.fai`), `chromsizes.tsv`,
-`sam_dict.tsv` and the GEM index `reference.gem`.
+`reference.contig_md5` (LN, M5, AS and SP per contig, as in gemBS) and the GEM
+index `reference.gem`.
 
 ## Pipeline steps
 
-1. **indexing**: decompress the reference, index it, write chromsizes and the SAM dictionary.
+1. **indexing**: decompress the reference, index it, write chromsizes and the contig metadata.
 2. **gem_indexer**: build the GEM bisulfite index.
 3. **split**: split each FASTQ pair with `seqkit split2`.
 4. **mapping**: map each part with `gem-mapper`.
@@ -203,8 +204,6 @@ These behaviors carry over unchanged from the pre-template pipeline (git tag
 
 - `split` always passes `-p 2` to `seqkit split2`. Any `fastq_split` other
   than 2 fails with missing outputs.
-- `indexing` fails if the reference's basename is `reference.fasta`: `mv` onto
-  itself errors.
 - `CONTIGS` hardcodes human chromosomes (chr1-22, X, Y, Pool). A reference
   missing any of them fails at `generate_chrome_ctgs`.
 - Contig BEDs depend only on chromsizes but are rebuilt per sample.
