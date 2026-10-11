@@ -196,6 +196,10 @@ These behaviors carry over unchanged from the pre-template pipeline (git tag
 - `extract_signal` writes an empty file in place of a bigWig for a strand with
   no sites.
 - Split FASTQs and per-part BAMs are kept, which doubles the input size on disk.
+- The SLURM profile keeps the old resource requests. On the ENCODE run, most
+  jobs used a small part of their memory: `calling` peaked at 1.2 GB of
+  250 GB, `mapping` at 35 GB of 250 GB. `merge` came closest, at 11.0 GB of
+  12.5 GB. Every job finished within half its time limit.
 
 ## References
 
