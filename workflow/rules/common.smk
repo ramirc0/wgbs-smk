@@ -18,8 +18,6 @@ REFERENCE = config["references"]["reference"]
 # The workspace path is relative to the rule file. Every rule file sits in rules/.
 SOFTWARE_ENV = pixi(workspace="../envs", env=config["pixi_env"], locked=True)
 
-# bs_call runs once per main chromosome and once for the pool of all other contigs.
-CONTIGS = [f"chr{i}" for i in range(1, 23)] + ["chrX", "chrY", "Pool"]
 SPLIT = [f"{part:03d}" for part in range(1, config["fastq_split"] + 1)]
 
 
@@ -68,7 +66,7 @@ if not SAMPLES:
 wildcard_constraints:
     sample=r"[A-Za-z0-9]+",
     part=r"\d{3}",
-    contig=r"(chr[0-9XY]+|Pool)",
+    pool=r"[^/]+",
 
 
 def prefix(sample):
@@ -120,6 +118,25 @@ def dict_flags():
     if config.get("species", ""):
         flags += ["-s", str(config["species"])]
     return flags
+
+
+def call_flags():
+    """Return the bs_call flags from `config["calling"]`, in gemBS's order.
+
+    Returns
+    -------
+    list of str
+        Flag tokens. Interpolate them with `:q`.
+    """
+    c = config["calling"]
+    return [
+        "--conversion", str(c["conversion"]),
+        "--left-trim", str(c["left_trim"]),
+        "--right-trim", str(c["right_trim"]),
+        "--reference-bias", str(c["reference_bias"]),
+        "--mapq-threshold", str(c["mapq_threshold"]),
+        "--bq-threshold", str(c["qual_threshold"]),
+    ]
 
 
 def extract_flags():

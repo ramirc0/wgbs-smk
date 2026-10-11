@@ -28,7 +28,7 @@ set-threads:
   merge: 13
   bam_qc: 13
   get_coverage: 13
-  generate_chrome_ctgs: 13
+  contig_pools: 1
   calling: 26
   merge_chroms: 26
   gembs_extract: 26
@@ -61,10 +61,10 @@ set-resources:              # tune from benchmarks/ TSVs after a real run
     slurm_partition: 4hours
     mem_mb: 125000 * attempt
     runtime: 240m
-  generate_chrome_ctgs:
+  contig_pools:
     slurm_partition: 4hours
-    mem_mb: 125000 * attempt
-    runtime: 240m
+    mem_mb: 1000 * attempt
+    runtime: 30m
   calling:
     slurm_partition: 4hours
     mem_mb: 250000 * attempt

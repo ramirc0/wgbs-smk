@@ -24,6 +24,7 @@ calling:
   left_trim: 5
   right_trim: 0
   conversion: 0.01,0.05
+  contig_pool_limit: 25000000
 
 extract:
   strand_specific: true

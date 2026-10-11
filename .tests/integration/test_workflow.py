@@ -91,7 +91,6 @@ def test_md5_sidecars_verify(run):
         assert done.returncode == 0, f"{md5.name}: {done.stdout}{done.stderr}"
 
 
-@pytest.mark.xfail(strict=True, reason="merge_chroms concatenates in glob order")
 def test_merged_bcf_follows_reference_order(run):
     """Check that the merged BCF lists contigs in reference order, whatever the locale."""
     body = tool("bcftools", "view", "-H", run / PREFIX / "S001/S001.bcf").splitlines()
@@ -100,7 +99,6 @@ def test_merged_bcf_follows_reference_order(run):
     assert seen == [c for c in order if c in seen]
 
 
-@pytest.mark.xfail(strict=True, reason="contig BEDs are rebuilt per sample")
 def test_contig_beds_are_built_once_per_reference(run):
     """Check that the contig BEDs for calling live with the reference, not per sample."""
     beds = sorted((run / "results/refs").rglob("*.bed"))
@@ -164,7 +162,6 @@ def test_reference_named_reference_fasta(tmp_path):
     run_ok(path, "results/refs/reference.fasta.fai")
 
 
-@pytest.mark.xfail(strict=True, reason="CONTIGS hardcodes chr1-22, X, Y")
 def test_contigs_without_chr_names(tmp_path):
     """Check that a reference without chr1-22, X and Y calls every contig."""
     path = workdir(tmp_path)

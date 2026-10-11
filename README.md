@@ -21,7 +21,7 @@ workflow/
     common.smk           config, sample sheet, path constants, helpers
     indexing.smk         reference FASTA, chromsizes, contig metadata, GEM index
     mapping.smk          split, map, merge, filter, strand coverage
-    call.smk             per-contig bs_call, merged BCF
+    call.smk             contig pools, per-pool bs_call, merged BCF
     extract.smk          mextr, strand bigWigs, methylC
   scripts/               argparse scripts, each with build_parser() + main()
   envs/
@@ -117,7 +117,8 @@ One row per sample. Lines starting with `#` are ignored.
   splits the pair and the parts are mapped in parallel and merged.
 - `calling.*`: `bs_call` output type, MAPQ and base-quality thresholds,
   reference bias, read trimming, and conversion rates
-  (`under,over`, comma-delimited).
+  (`under,over`, comma-delimited). `contig_pool_limit` (default 25 Mb, as in
+  gemBS) sets which contigs get their own `bs_call` job.
 - `extract.*`: `mextr` strand-specific bedMethyl and bigWig modes, and the
   Phred threshold.
 
@@ -171,13 +172,14 @@ Per sample, under `results/<run_id>/<sample>/`:
 | `<s>.bam`, `.bam.csi`, `.bam.md5` | Final alignments |
 | `<s>.json` | Mapping QC: gem-mapper reports, `samtools stats` and average coverage |
 | `<s>_coverage_{neg,pos}.bw` | Strand-specific coverage (the bedGraphs are temporary) |
-| `<s>_<contig>.json` | Per-contig `bs_call` reports |
+| `<s>_<pool>.json` | Per-pool `bs_call` reports |
 | `<s>.bcf`, `.bcf.csi`, `.bcf.md5` | Whole-genome methylation calls |
 | `<s>_{cpg,non_cpg}.txt.gz`, `<s>_{chg,chh,cpg}.bed.gz`, `<s>_{neg,pos}.bw` | `mextr` outputs |
 | `<s>_{cpg,chg,chh}_{pos,neg}.bw` | Methylation level per context and strand |
 | `<s>_methylc.bed.gz` (+ `.tbi`) | Combined CG/CHG/CHH methylC file |
 
-`results/refs/` holds `reference.fasta` (+ `.fai`), `chromsizes.tsv`,
+`results/refs/` holds `reference.fasta` (+ `.fai`), `chromsizes.tsv`, the pool
+BEDs and their order in `pools/`,
 `reference.contig_md5` (LN, M5, AS and SP per contig, as in gemBS) and the GEM
 index `reference.gem`.
 
@@ -191,9 +193,11 @@ index `reference.gem`.
 5. **merge**: merge the sorted parts into one read group and checksum the BAM.
 6. **bam_qc**: write the mapping QC JSON with `samtools stats` and average coverage.
 7. **get_coverage**: strand coverage with `bedtools genomecov` and `bedGraphToBigWig`.
-8. **generate_chrome_ctgs**: one contig BED per main chromosome, plus a `Pool` of the rest.
-9. **calling**: `bs_call` per contig.
-10. **merge_chroms**: concatenate the contig BCFs with `bcftools concat`.
+8. **contig_pools**: group the contigs into `bs_call` jobs as gemBS does, once
+   per reference. A contig of at least `calling.contig_pool_limit` bases is its
+   own job. The rest are packed into `Pool@N` jobs of about that size.
+9. **calling**: `bs_call` per pool, reading the BAM in place.
+10. **merge_chroms**: concatenate the pool BCFs in reference order with `bcftools concat`.
 11. **gembs_extract**: `mextr` bedMethyl, CpG/non-CpG and bigWig outputs.
 12. **extract_signal**: methylation-level bigWigs per context and strand.
 13. **get_methylc**: combine the three contexts into one sorted, indexed methylC file.
@@ -203,16 +207,6 @@ index `reference.gem`.
 These behaviors carry over unchanged from the pre-template pipeline (git tag
 `pre-template`).
 
-- `CONTIGS` hardcodes human chromosomes (chr1-22, X, Y, Pool). A reference
-  missing any of them fails at `generate_chrome_ctgs`.
-- Contig BEDs depend only on chromsizes but are rebuilt per sample.
-- The contig order in the merged BCF follows the shell's glob order, which
-  depends on the locale.
-- `calling` removes the staged FASTA twice and leaves the FASTA index,
-  chromsizes and its outputs in `tmpdir`.
-- Each `calling` job copies the whole BAM to `tmpdir`, once per contig. A
-  146 GB BAM filled the 220 GB `/tmp` of a cascadelake node running two such
-  jobs. Retries on other nodes passed.
 - Several files are written but not declared as outputs: the methylC `.tbi`,
   and the `mextr` `.md5`, `.tbi` and `.bb` files.
 - `extract_signal` writes an empty file in place of a bigWig for a strand with

@@ -16,7 +16,7 @@ snakemake-executor-plugin-slurm = "==2.8.0"
 snakemake-executor-plugin-slurm-jobstep = "==0.6.1"
 
 [tasks]
-test = "pixi run --manifest-path workflow/envs/pixi.toml --environment test pytest .tests/integration"
+test = "pixi run --manifest-path workflow/envs/pixi.toml --environment test pytest .tests"
 
 [feature.lint.dependencies]
 ruff = ">=0.16.9,<0.17"

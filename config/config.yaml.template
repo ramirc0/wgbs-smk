@@ -23,6 +23,7 @@ calling:
   left_trim: 5
   right_trim: 0
   conversion: 0.01,0.05  # under- and over-conversion, comma-delimited
+  contig_pool_limit: 25000000  # contigs this long get their own bs_call job
 
 extract:
   strand_specific: true
