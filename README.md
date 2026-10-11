@@ -39,9 +39,9 @@ pyproject.toml           ruff + numpydoc config
 - **Outputs grouped by `run_id`** under `results/<run_id>/<sample>/`. Logs and
   benchmarks mirror it (`logs/<run_id>/`, `benchmarks/<run_id>/`). The
   reference artifacts are run-independent and go in `results/refs/`.
-- **Sample sheet** is a TSV read once in `common.smk`. Columns are looked up
-  with `_column()` (empty cell -> `None`).
-- **Config -> flags**: helpers such as `extract_flags()` and `dict_flags()` turn
+- **Sample sheet** is a TSV read once in `common.smk` into `SHEET`, one row
+  dict per `sample_id`.
+- **Config -> flags**: helpers such as `call_flags()`, `extract_flags()` and `dict_flags()` turn
   `config` into flag lists. `read_group()` builds the gem-mapper `@RG` line.
 - **Every rule** carries `log:`, `benchmark:`, and `software:`.
 

@@ -199,6 +199,17 @@ def test_empty_strand_gives_a_valid_bigwig(tmp_path):
             ] == BIGWIG_MAGIC
 
 
+def test_old_sheet_headers_name_the_new_ones(tmp_path):
+    """Check that a sheet with the pre-template headers fails with a rename hint."""
+    path = workdir(tmp_path)
+    sheet = path / "config/samples.tsv"
+    lines = sheet.read_text().splitlines(keepends=True)
+    sheet.write_text("Barcode\tDataset\tFile1\tFile2\n" + "".join(lines[1:]))
+    done = snakemake(path, "-n")
+    assert done.returncode != 0
+    assert "Barcode, Dataset, File1, File2" in done.stdout + done.stderr
+
+
 def test_coverage_matches_one_genomecov_pass(run, tmp_path):
     """Check that per-contig coverage equals one bedtools genomecov pass per strand."""
     bam = run / PREFIX / "S001/S001.bam"

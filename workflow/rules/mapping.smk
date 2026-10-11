@@ -1,7 +1,7 @@
 rule split:
     input:
-        r1=lambda w: FASTQ_1_OF[w.sample],
-        r2=lambda w: FASTQ_2_OF[w.sample],
+        r1=lambda w: SHEET[w.sample]["fastq_1"],
+        r2=lambda w: SHEET[w.sample]["fastq_2"],
     output:
         # seqkit -f wipes this directory, so it holds nothing else.
         dir=directory(f"{OUTDIR}/{{sample}}/split"),
@@ -57,7 +57,8 @@ def mapping_fastqs(wildcards):
         a dataset whole, else the split parts.
     """
     if len(SPLIT) == 1:
-        return {"r1": FASTQ_1_OF[wildcards.sample], "r2": FASTQ_2_OF[wildcards.sample]}
+        row = SHEET[wildcards.sample]
+        return {"r1": row["fastq_1"], "r2": row["fastq_2"]}
     split = f"{OUTDIR}/{wildcards.sample}/split/{wildcards.sample}"
     return {
         "r1": f"{split}_R1.part_{wildcards.part}.fastq.gz",

@@ -1,6 +1,6 @@
+import csv
 from pathlib import Path
 
-import polars as pl
 from snakemake.exceptions import WorkflowError
 
 
@@ -28,36 +28,17 @@ if not _SHEET.exists():
         "Columns: sample_id, dataset, fastq_1, fastq_2; see config/samples.example.tsv."
     )
 
-# All-string read so empty cells are "" (absent), not a type error.
-_manifest = pl.read_csv(_SHEET, separator="\t", infer_schema_length=0, comment_prefix="#")
+with _SHEET.open(newline="") as f:
+    _rows = csv.DictReader((line for line in f if not line.startswith("#")), delimiter="\t")
+    _missing = {"sample_id", "dataset", "fastq_1", "fastq_2"} - set(_rows.fieldnames or ())
+    if _missing:
+        raise WorkflowError(
+            f"Sample sheet {_SHEET} lacks the columns {sorted(_missing)}.\n"
+            "Sheets from before the template port name them Barcode, Dataset, File1, File2."
+        )
+    SHEET = {row["sample_id"]: row for row in _rows}
 
-
-def _column(name):
-    """Map each sample to its value in sheet column `name`.
-
-    Parameters
-    ----------
-    name : str
-        Sample sheet column.
-
-    Returns
-    -------
-    dict of str to str or None
-        Value per `sample_id`, with empty cells as None. Empty when the sheet
-        has no such column.
-    """
-    if name not in _manifest.columns:
-        return {}
-    return {
-        row["sample_id"]: (row[name] or None)
-        for row in _manifest.iter_rows(named=True)
-    }
-
-
-SAMPLES = _manifest.get_column("sample_id").to_list()
-DATASET_OF = _column("dataset")
-FASTQ_1_OF = _column("fastq_1")
-FASTQ_2_OF = _column("fastq_2")
+SAMPLES = list(SHEET)
 
 if not SAMPLES:
     raise WorkflowError(f"Sample sheet {_SHEET} has no rows.")
@@ -100,7 +81,7 @@ def read_group(sample):
         `BC` to the sample ID, and an empty `SM`. The tabs are real characters,
         not `\\t` escapes.
     """
-    dataset = DATASET_OF[sample].strip()
+    dataset = SHEET[sample]["dataset"].strip()
     return f"@RG\tID:{dataset}\tSM:\tBC:{sample}\tPU:{dataset}"
 
 

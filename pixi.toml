@@ -6,11 +6,10 @@ channels = ["conda-forge"]
 platforms = ["linux-64"]
 
 [dependencies]
-python = "3.13.*"
-polars = "*"
+python = "3.14.*"
 
 [pypi-dependencies]
-snakemake = { git = "https://github.com/snakemake/snakemake.git", rev = "5bf5e21b0d0e7e65e247c1f2c61c1a4f74a1a752" }
+snakemake = { git = "https://github.com/snakemake/snakemake.git", rev = "4523356973a83aa237a121717ee81dd2e09175da" }
 snakemake-software-deployment-plugin-pixi = { git = "https://github.com/cademirch/snakemake-software-deployment-plugin-pixi.git", rev = "315e0f3113daefc2dfeda3a48777cd1acb2707e0" }
 snakemake-executor-plugin-slurm = "==2.8.0"
 snakemake-executor-plugin-slurm-jobstep = "==0.6.1"
@@ -19,7 +18,7 @@ snakemake-executor-plugin-slurm-jobstep = "==0.6.1"
 test = "pixi run --manifest-path workflow/envs/pixi.toml --environment test pytest .tests"
 
 [feature.lint.dependencies]
-ruff = ">=0.16.9,<0.17"
+ruff = ">=0.17,<0.18"
 numpydoc = ">=1.11.0,<2"
 
 [feature.lint.tasks]
