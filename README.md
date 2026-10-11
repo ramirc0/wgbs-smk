@@ -9,7 +9,9 @@ extracts bedMethyl, methylC and bigWig tracks with `mextr`. It follows the
 ## Layout
 
 ```
-.tests/fixture/          config + toy inputs for `pixi run test`
+.tests/
+  integration/           toy genome + reads, run by `pixi run test`
+  validation/            four ENCODE replicates on GRCh38, compared with ENCODE4's calls
 config/
   config.yaml.template   parameters + paths; copy to config.yaml (gitignored)
   samples.example.tsv    one row per sample: sample_id, dataset, fastq_1, fastq_2
@@ -77,7 +79,7 @@ pixi shell                                         # launcher env
 snakemake -n -p --profile profiles/slurm           # dry run
 snakemake --profile profiles/slurm                 # SLURM
 snakemake --profile profiles/local                 # local
-pixi run test                                      # end-to-end test
+pixi run test                                      # toy end-to-end test
 ```
 
 Run from the repository root. Local runs suit small data only.
@@ -86,7 +88,7 @@ The first job builds the rule env, which compiles gem3-mapper and gemBS-rs.
 Build it once before launching many jobs:
 
 ```bash
-pixi install --manifest-path workflow/envs/pixi.toml
+pixi install --locked --manifest-path workflow/envs/pixi.toml
 ```
 
 Tune `set-resources` in the profiles from the `benchmarks/<run_id>/` TSVs after
@@ -117,6 +119,29 @@ One row per sample. Lines starting with `#` are ignored.
   (`under,over`, comma-delimited).
 - `extract.*`: `mextr` strand-specific bedMethyl and bigWig modes, and the
   Phred threshold.
+
+## Tests
+
+`pixi run test` runs every rule on the toy data in `.tests/integration/`: 2 kb
+of each contig in `CONTIGS` plus one alt contig, and two samples of simulated
+directional bisulfite reads with 80% CpG methylation.
+
+The validation runs four ENCODE WGBS replicates end to end on full GRCh38: two
+each of K562 (ENCSR765JPC) and GM12878 (ENCSR890UQO). Its inputs live on the
+Weng Lab cluster, so it runs only there.
+
+```bash
+snakemake --profile profiles/slurm --configfile .tests/validation/config.yaml
+srun -p 4hours -c 8 --mem=200G -t 60 \
+    pixi run --manifest-path workflow/envs/pixi.toml python .tests/validation/compare_encode.py
+```
+
+Outputs go under `results/validation/`, with their own GRCh38 index.
+`compare_encode.py` joins each replicate's CpG bedMethyl with ENCODE4 v1.1.6's
+on chrom, start and strand. On the 2026-10-11 run, which took 13 hours, 99% of
+ENCODE's CpG sites were shared, and methylation correlated at r = 0.983-0.990
+where both had coverage 10 or more. ENCODE4 mapped R1 only, so its coverage is
+about half of ours.
 
 ## Environment
 

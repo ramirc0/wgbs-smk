@@ -7,9 +7,10 @@ the layout, idioms, conventions, and known issues. Follow it.
 
 ```bash
 pixi run lint                                # ruff check, ruff format --check, numpydoc lint
-pixi run test                                # full run in .tests/fixture
+pixi run test                                # full run in .tests/integration
 pixi run snakemake -n -p --profile profiles/local
 pixi run snakemake --profile profiles/local
+pixi run snakemake --profile profiles/slurm --configfile .tests/validation/config.yaml  # ENCODE validation run
 ```
 
 ## Two pixi workspaces
@@ -36,7 +37,8 @@ pixi run snakemake --profile profiles/local
 
 ## Verifying a change
 
-`pixi run test` runs every rule on the toy data in `.tests/fixture/`: every contig in `CONTIGS` plus one alt contig, and two samples of directional bisulfite reads with 80% CpG methylation.
+`pixi run test` runs every rule on the toy data in `.tests/integration/`: every contig in `CONTIGS` plus one alt contig, and two samples of directional bisulfite reads with 80% CpG methylation.
 New rules or inputs MUST get matching test inputs there.
+For a big change, run the validation on SLURM, then `.tests/validation/compare_encode.py`.
 
 To check faithfulness, run the same inputs through a `pre-template` worktree and compare the normalized BAM, BCF, bed, and bigWig contents.
