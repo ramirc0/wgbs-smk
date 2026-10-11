@@ -17,7 +17,8 @@ pixi run snakemake --profile profiles/local
 - Root `pixi.toml` is the launcher: Snakemake and its plugins, plus the `lint` env.
 - `workflow/envs/pixi.toml` is the rule env. Rule dependencies go there, never in the root.
 - gem3-mapper and gemBS-rs are `pixi-build` source packages in `workflow/envs/recipes/`. They compile on first install.
-- A checkout that touches `workflow/envs/` makes pixi rebuild both source packages. Concurrent jobs then race in one `.pixi/bld/<pkg>/<hash>` dir and break it. Delete that dir and run `pixi install --locked` in `workflow/envs/` before launching.
+- The build backend MUST stay pinned. The lock does not record it, so a new release makes every job rebuild both packages from GitHub. Compute nodes may not resolve github.com.
+- A checkout or edit in `workflow/envs/` also triggers a rebuild. Run `pixi install --locked` in `workflow/envs/` before launching jobs.
 - Rules use `locked=True`. After a manifest or recipe edit, run `pixi lock` in `workflow/envs/`.
 - `SOFTWARE_ENV` resolves `../envs` relative to the rule file. New rule files MUST sit in `workflow/rules/`.
 
@@ -30,7 +31,7 @@ pixi run snakemake --profile profiles/local
 - `seqkit split2 -f` wipes its output dir. Keep the split FASTQs in their own `split/` dir.
 - gem3-mapper is built with `-march=x86-64-v4`. It needs AVX-512 nodes.
 - Scripts pin polars 1.x. They use the 1.x `read_csv` API.
-- `/` on this host is nearly full. Point `TMPDIR` at a `/home` path for builds and test runs.
+- `/` on this host is nearly full. Point `TMPDIR` at a `/home` path for builds and test runs. Do not set it for a SLURM launch: jobs inherit it as `resources.tmpdir`.
 - Known issues in README.md are kept on purpose for parity with the `pre-template` tag. Fix one only with a test that shows it.
 
 ## Verifying a change
