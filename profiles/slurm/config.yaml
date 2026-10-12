@@ -31,7 +31,7 @@ set-threads:
   # bs_call's --threads only sizes its htslib I/O pools.
   calling: 4
   merge_chroms: 4
-  gembs_extract: 16
+  gembs_extract: 32
   extract_signal: 8
   get_methylc: 8
 
