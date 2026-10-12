@@ -151,19 +151,6 @@ Outputs go under `results/validation/`, with their own GRCh38 index.
 on chrom, start and strand, or with another run's given `--baseline-run`.
 ENCODE4 mapped R1 only, so its coverage is about half of ours.
 
-| Run | Shared ENCODE CpGs | Methylation r, coverage >= 10 | Job time on the largest sample's critical path |
-|---|---|---|---|
-| 2026-10-10, `post-template` | 99.1-99.2% | 0.983-0.990 | 12.8 h (13 h wall time) |
-| 2026-10-11, this version (`encode-validation-v2`) | 99.1-99.2% | 0.983-0.990 | 4.2 h |
-
-Against the first run, the second shares 99.93-99.99% of CpG sites, with
-methylation r = 0.9994-1.0000. The largest sample, mapped as one part with 52
-threads instead of two with 26, differs most: gem-mapper's alignments depend on
-the thread count. The 4.2 h is index 19 min, mapping and sort 157 min, then
-calling, BCF merge, `mextr` and the bigWigs 78 min, from the benchmarks. Bug
-fixes stopped the run three times, so it has no single wall time. Most of its
-jobs after mapping ran on broadwell nodes, which have slower cores.
-
 ## Environment
 
 The launcher env (`pixi.toml` at the root) has Snakemake main, the pixi
@@ -238,8 +225,8 @@ The steps from indexing to `mextr` run gemBS-rs's commands with its
 | M5 hashes the raw sequence bytes; AS and SP come from FASTA headers | `samtools dict`: M5 of the uppercased sequence, AS and SP from the config |
 | Pool BCFs concatenated in file-name order | Concatenated in reference order |
 | `--regions-file` lists every contig for `mextr` | No regions file; `mextr` reads the same contigs |
-| `mextr --tabix` indexes the text outputs as it writes them | `tabix` indexes them afterwards. `mextr`'s index thread failed on all three ENCODE samples tried with gemBS-rs `dev`, and it reads the 0-based start as 1-based |
-| `mextr` drops each contig's last base: it writes 0-based region ends into strings htslib parses as 1-based | Patched in the recipe. Not reported upstream |
+| `mextr --tabix` indexes the text outputs as it writes them | `tabix` indexes them afterwards |
+| `mextr` drops each contig's last base | `mextr` keeps it |
 | HTML and LaTeX QC reports, merged call JSON | ENCODE-style mapping QC JSON, coverage and per-context bigWigs, methylC |
 
 ## References
