@@ -191,12 +191,7 @@ rule get_coverage:
         bam=f"{OUTDIR}/{{sample}}/{{sample}}.bam",
         chromsizes=f"{REFDIR}/chromsizes.tsv",
     output:
-        coverage_bedgraphs=temp(
-            [
-                f"{OUTDIR}/{{sample}}/{{sample}}_coverage_neg.bg",
-                f"{OUTDIR}/{{sample}}/{{sample}}_coverage_pos.bg",
-            ]
-        ),
+        bedgraphs=temp(directory(f"{OUTDIR}/{{sample}}/coverage")),
         coverage_bigwigs=[
             f"{OUTDIR}/{{sample}}/{{sample}}_coverage_neg.bw",
             f"{OUTDIR}/{{sample}}/{{sample}}_coverage_pos.bw",
@@ -211,20 +206,22 @@ rule get_coverage:
         r"""
         exec &> >(tee {log:q})
 
-        # One genomecov per contig. -k keeps the BAM's contig order, so each
-        # bedGraph equals a single pass over the whole BAM.
-        strands=(- +)
-        bedgraphs=({output.coverage_bedgraphs:q})
-        for i in 0 1; do
-            parallel -k -j {threads} \
-                "set -o pipefail; samtools view -u {input.bam:q} {{}} | bedtools genomecov -ibam stdin -bg -strand ${{strands[$i]}}" \
-                :::: <(cut -f1 {input.chromsizes:q}) \
-                > "${{bedgraphs[$i]}}"
-        done
+        # One genomecov per strand and contig, largest contigs first so the
+        # last jobs are short.
+        mkdir -p {output.bedgraphs:q}/neg {output.bedgraphs:q}/pos
+        parallel \
+            -j {threads} \
+            "set -o pipefail; samtools view -u {input.bam:q} {{3}} | bedtools genomecov -ibam stdin -bg -strand {{1}} > {output.bedgraphs:q}/{{2}}/{{3}}.bg" \
+            ::: - + \
+            :::+ neg pos \
+            :::: <(sort -k2,2nr {input.chromsizes:q} | cut -f1)
 
+        # bigtools takes contigs in sort -k1,1 order. --inmemory keeps it off
+        # disk, where a failed write shows only as SendError::Disconnected.
+        cut -f1 {input.chromsizes:q} | LC_ALL=C sort > {output.bedgraphs:q}/order.txt
         parallel \
             -j 2 \
-            bedGraphToBigWig {{1}} {input.chromsizes:q} {{2}} \
-            ::: {output.coverage_bedgraphs:q} \
+            "set -o pipefail; sed 's|.*|{output.bedgraphs}/{{1}}/&.bg|' {output.bedgraphs:q}/order.txt | xargs -d '\n' cat | bigtools bedgraphtobigwig --inmemory -t $(( ({threads} + 1) / 2 )) - {input.chromsizes:q} {{2}}" \
+            ::: neg pos \
             :::+ {output.coverage_bigwigs:q}
         """

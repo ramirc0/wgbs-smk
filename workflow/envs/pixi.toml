@@ -18,6 +18,7 @@ parallel = "*"
 ucsc-bedgraphtobigwig = "*"
 gem3-mapper = { path = "recipes/gem3-mapper", package.build.backend = { name = "pixi-build-rattler-build", version = "==0.4.7" } }
 gembs-rs = { path = "recipes/gembs-rs", package.build.backend = { name = "pixi-build-rattler-build", version = "==0.4.7" } }
+bigtools = "*"
 
 [feature.test.dependencies]
 pytest = "*"
