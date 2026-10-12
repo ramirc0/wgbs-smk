@@ -24,7 +24,7 @@ set-threads:
   split: 8
   mapping: 52
   merge: 13
-  bam_qc: 4
+  bam_qc: 26
   bam_md5: 1
   get_coverage: 26
   contig_pools: 1
@@ -64,7 +64,7 @@ set-resources:
     runtime: 240m
   bam_qc:
     slurm_partition: 4hours
-    mem_mb: 8000 * attempt
+    mem_mb: 16000 * attempt
     runtime: 240m
   bam_md5:
     slurm_partition: 4hours
