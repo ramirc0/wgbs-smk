@@ -30,7 +30,6 @@ def bed_gz(tmp_path):
     return path
 
 
-@pytest.mark.xfail(strict=True, reason="polars reads a gzipped CSV in many chunks")
 @pytest.mark.parametrize(
     "read", [lambda p: read_methylc(p, "CHH"), read_levels], ids=["methylc", "levels"]
 )

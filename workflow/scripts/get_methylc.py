@@ -51,7 +51,7 @@ def read_methylc(bed_gz, context):
         schema=BED_SCHEMA,
         columns=[0, 1, 2, 5, 9, 10],
     )
-    return df.select(
+    return df.rechunk().select(
         "chr",
         "start",
         "end",

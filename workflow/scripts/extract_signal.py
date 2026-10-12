@@ -42,14 +42,18 @@ def read_levels(bed_gz):
         Columns `chr`, `start`, `end`, `strand` and `methylation_level`, in
         file order.
     """
-    return pl.read_csv(
-        bed_gz,
-        separator="\t",
-        has_header=False,
-        skip_rows=1,
-        schema=BED_SCHEMA,
-        columns=[0, 1, 2, 5, 10],
-    ).with_columns(pl.col("methylation_level") / 100)
+    return (
+        pl.read_csv(
+            bed_gz,
+            separator="\t",
+            has_header=False,
+            skip_rows=1,
+            schema=BED_SCHEMA,
+            columns=[0, 1, 2, 5, 10],
+        )
+        .rechunk()
+        .with_columns(pl.col("methylation_level") / 100)
+    )
 
 
 def write_empty_bigwig(path, chromsizes):
