@@ -63,14 +63,16 @@ def read_cpg(path):
     polars.DataFrame
         Columns `chrom`, `start`, `strand`, `coverage` and `percent`.
     """
-    return pl.read_csv(
+    df = pl.read_csv(
         path,
         separator="\t",
         has_header=False,
         comment_prefix="track",
         columns=[0, 1, 5, 9, 10],
-        new_columns=["chrom", "start", "strand", "coverage", "percent"],
-        schema_overrides={"coverage": pl.Int32, "percent": pl.Float32},
+    )
+    names = ["chrom", "start", "strand", "coverage", "percent"]
+    return df.rename(dict(zip(df.columns, names, strict=True))).with_columns(
+        pl.col("coverage").cast(pl.Int32), pl.col("percent").cast(pl.Float32)
     )
 
 
