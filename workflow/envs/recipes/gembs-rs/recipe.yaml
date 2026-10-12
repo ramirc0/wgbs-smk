@@ -12,7 +12,7 @@ source:
   git: https://github.com/heathsc/gemBS-rs.git
   rev: ${{ rev }}
   # mextr writes 0-based region ends into strings htslib parses as 1-based,
-  # dropping each contig's last base. Not reported upstream.
+  # dropping each contig's last base.
   patches:
     - mextr-region-ends.patch
 

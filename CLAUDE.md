@@ -1,7 +1,8 @@
 # CLAUDE.md
 
 WGBS Snakemake workflow on the snakemake-template conventions. README.md holds
-the layout, idioms, conventions, and known issues. Follow it.
+the layout, idioms, and conventions. Follow it.
+README.md is user documentation. Run results, rationale, and bug history MUST NOT go there.
 
 ## Commands
 
@@ -29,6 +30,8 @@ pixi run snakemake --profile profiles/slurm --configfile .tests/validation/confi
 - `.smk` files are not linted. Keep helper docstrings numpydoc by hand.
 - The read group needs real tab characters. Build it in `read_group()`, never inside an `r"""` shell block.
 - mextr's `--tabix` thread reads each output back while mextr writes it. On ENCODE-size data it fails with BGZF read errors, so `gembs_extract` runs `tabix` afterwards. The toy data are too small to show it.
+- The gemBS-rs recipe patches mextr's region ends, which dropped each contig's last base. The bug is not reported upstream.
+- mextr panics with a divide by zero in `bbi/tree.rs` when a whole bigBed or bigWig output has no sites. Real genomes do not hit it. A BCF slice for a quick mextr check can: keep sites of every context in it.
 - `seqkit split2 -f` wipes its output dir. Keep the split FASTQs in their own `split/` dir.
 - gem3-mapper is built with `-march=x86-64-v4`. It needs AVX-512 nodes.
 - The login shell exports `CFLAGS=-O3 -march=x86-64-v4`. A PyPI package with no wheel for our python gets built with it and crashes on broadwell nodes. Take such packages from conda-forge. `.tests/unit/test_envs.py` checks this.
