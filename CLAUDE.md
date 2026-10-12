@@ -36,6 +36,7 @@ pixi run snakemake --profile profiles/slurm --configfile .tests/validation/confi
 - gem3-mapper is built with `-march=x86-64-v4`. It needs AVX-512 nodes.
 - The login shell exports `CFLAGS=-O3 -march=x86-64-v4`. A PyPI package with no wheel for our python gets built with it and crashes on broadwell nodes. Take such packages from conda-forge. `.tests/unit/test_envs.py` checks this.
 - The rule env pins polars 2.x. The scripts read mextr's headerless bedMethyl by column index.
+- polars reads a gzipped CSV in many chunks, about 140,000 for a CHH bedMethyl, and writes such a frame 25 times slower. Call `.rechunk()` after `read_csv`.
 - Point `TMPDIR` at a roomy local path, such as `/tmp/$USER`, for builds and test runs. Do not set it for a SLURM launch: jobs inherit it as `resources.tmpdir`.
 - gem-mapper learns insert sizes per thread, so alignments can shift with the thread count. Compare runs with different threads or `fastq_split` at the methylation level.
 - A SLURM run's jobs use the workflow source as it was at launch. A fix reaches them only after a relaunch. A killed head leaves a lock: run `--unlock` first.
