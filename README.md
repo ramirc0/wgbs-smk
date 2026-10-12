@@ -148,10 +148,21 @@ srun -p 4hours -c 8 --mem=200G -t 60 \
 
 Outputs go under `results/validation/`, with their own GRCh38 index.
 `compare_encode.py` joins each replicate's CpG bedMethyl with ENCODE4 v1.1.6's
-on chrom, start and strand. On the 2026-10-11 run, which took 13 hours, 99% of
-ENCODE's CpG sites were shared, and methylation correlated at r = 0.983-0.990
-where both had coverage 10 or more. ENCODE4 mapped R1 only, so its coverage is
-about half of ours.
+on chrom, start and strand, or with another run's given `--baseline-run`.
+ENCODE4 mapped R1 only, so its coverage is about half of ours.
+
+| Run | Shared ENCODE CpGs | Methylation r, coverage >= 10 | Job time on the largest sample's critical path |
+|---|---|---|---|
+| 2026-10-10, `post-template` | 99.1-99.2% | 0.983-0.990 | 12.8 h (13 h wall time) |
+| 2026-10-11, this version (`encode-validation-v2`) | 99.1-99.2% | 0.983-0.990 | 4.2 h |
+
+Against the first run, the second shares 99.93-99.99% of CpG sites, with
+methylation r = 0.9994-1.0000. The largest sample, mapped as one part with 52
+threads instead of two with 26, differs most: gem-mapper's alignments depend on
+the thread count. The 4.2 h is index 19 min, mapping and sort 157 min, then
+calling, BCF merge, `mextr` and the bigWigs 78 min, from the benchmarks. Bug
+fixes stopped the run three times, so it has no single wall time. Most of its
+jobs after mapping ran on broadwell nodes, which have slower cores.
 
 ## Environment
 
