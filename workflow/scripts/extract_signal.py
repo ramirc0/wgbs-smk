@@ -96,14 +96,20 @@ def build_parser():
     )
     parser.add_argument("--barcode", required=True, help="Sample ID, the file prefix.")
     parser.add_argument("--tmpdir", default=None, help="Directory for the bedGraphs.")
+    parser.add_argument(
+        "--threads",
+        type=int,
+        default=1,
+        help="Threads for all bigWig writes; a quarter goes to each.",
+    )
     return parser
 
 
 def main(argv=None):
     """Write `<barcode>_<context>_<strand>.bw` for CpG, CHG and CHH on both strands.
 
-    mextr writes each contig's sites in position order, which bedGraphToBigWig
-    accepts as is. A strand without sites gets a bigWig with no data.
+    mextr writes its contigs in name order and each contig's sites in position
+    order, which bigtools needs. A strand without sites gets a bigWig with no data.
 
     Parameters
     ----------
@@ -124,12 +130,13 @@ def main(argv=None):
                     continue
                 bedgraph = Path(tmp, f"{context}_{strand}.bedgraph")
                 sites.write_csv(bedgraph, include_header=False, separator="\t")
-                cmd = ["bedGraphToBigWig", bedgraph, args.chromsizes, bigwig]
-                jobs.append(subprocess.Popen(cmd))
+                threads = str(max(1, args.threads // 4))
+                cmd = ["bigtools", "bedgraphtobigwig", "--inmemory", "-t", threads]
+                jobs.append(subprocess.Popen([*cmd, bedgraph, args.chromsizes, bigwig]))
             del levels  # free it before reading the next context
         failed = [job.args for job in jobs if job.wait() != 0]
     if failed:
-        raise SystemExit(f"bedGraphToBigWig failed: {failed}")
+        raise SystemExit(f"bigtools failed: {failed}")
 
 
 if __name__ == "__main__":

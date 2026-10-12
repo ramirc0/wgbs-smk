@@ -203,7 +203,7 @@ Per sample, under `results/<run_id>/<sample>/`:
 5. **merge**: with several parts, merge the sorted parts into one read group.
 6. **bam_md5**: checksum the final BAM.
 7. **bam_qc**: write the mapping QC JSON with `samtools stats` and average coverage.
-8. **get_coverage**: strand coverage with `bedtools genomecov` and `bedGraphToBigWig`.
+8. **get_coverage**: strand coverage with `bedtools genomecov` and `bigtools`.
 9. **contig_pools**: group the contigs into `bs_call` jobs as gemBS does, once
    per reference. A contig of at least `calling.contig_pool_limit` bases is its
    own job. The rest are packed into `Pool@N` jobs of about that size.

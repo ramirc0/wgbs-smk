@@ -96,6 +96,7 @@ rule extract_signal:
             --chromsizes {input.chromsizes:q} \
             --output-dir $(dirname {output.bigwigs[0]:q}) \
             --barcode {wildcards.sample:q} \
+            --threads {threads} \
             --tmpdir {params.tmpdir:q}
         """
 
