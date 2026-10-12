@@ -75,7 +75,9 @@ def build_parser():
     parser.add_argument("--chh", required=True, help="CHH bedMethyl file.")
     parser.add_argument("--chg", required=True, help="CHG bedMethyl file.")
     parser.add_argument("--cpg", required=True, help="CpG bedMethyl file.")
-    parser.add_argument("--threads", default=1, type=int, help="Threads for bgzip.")
+    parser.add_argument(
+        "--threads", default=1, type=int, help="Threads for bgzip and tabix."
+    )
     parser.add_argument("--outdir", required=True, type=Path, help="Output directory.")
     parser.add_argument("--tmpdir", default=None, help="Directory for the parts.")
     return parser
@@ -117,7 +119,7 @@ def main(argv=None):
             )
         if merge.wait() != 0:
             raise SystemExit("sort -m failed")
-    subprocess.run(["tabix", "-p", "bed", methylc], check=True)
+    subprocess.run(["tabix", "-@", str(args.threads), "-p", "bed", methylc], check=True)
 
 
 if __name__ == "__main__":
