@@ -178,7 +178,7 @@ Per sample, under `results/<run_id>/<sample>/`:
 
 | Files | Step |
 |---|---|
-| `<s>.NNN.json` | gem-mapper report per part (`split/` FASTQs and part BAMs are temporary) |
+| `<s>.map.json`, or `<s>.NNN.map.json` per part | gem-mapper reports (`split/` FASTQs and part BAMs are temporary) |
 | `<s>.bam`, `.bam.csi`, `.bam.md5` | Final alignments |
 | `<s>.json` | Mapping QC: gem-mapper reports, `samtools stats` and average coverage |
 | `<s>_coverage_{neg,pos}.bw` | Strand-specific coverage (the bedGraphs are temporary) |
@@ -200,19 +200,21 @@ Per sample, under `results/<run_id>/<sample>/`:
 1. **indexing**: decompress the reference, index it, write chromsizes and the contig metadata.
 2. **gem_indexer**: build the GEM bisulfite index.
 3. **split**: split each FASTQ pair with `seqkit split2`.
-4. **mapping**: map each part with `gem-mapper`, clean read names and add the
-   contig metadata with gemBS's `read_filter`, and sort, as gemBS does.
-5. **merge**: merge the sorted parts into one read group and checksum the BAM.
-6. **bam_qc**: write the mapping QC JSON with `samtools stats` and average coverage.
-7. **get_coverage**: strand coverage with `bedtools genomecov` and `bedGraphToBigWig`.
-8. **contig_pools**: group the contigs into `bs_call` jobs as gemBS does, once
+4. **mapping**: map with `gem-mapper`, clean read names and add the contig
+   metadata with gemBS's `read_filter`, and sort, as gemBS does. With one part
+   this writes the final BAM.
+5. **merge**: with several parts, merge the sorted parts into one read group.
+6. **bam_md5**: checksum the final BAM.
+7. **bam_qc**: write the mapping QC JSON with `samtools stats` and average coverage.
+8. **get_coverage**: strand coverage with `bedtools genomecov` and `bedGraphToBigWig`.
+9. **contig_pools**: group the contigs into `bs_call` jobs as gemBS does, once
    per reference. A contig of at least `calling.contig_pool_limit` bases is its
    own job. The rest are packed into `Pool@N` jobs of about that size.
-9. **calling**: `bs_call` per pool, reading the BAM in place.
-10. **merge_chroms**: concatenate the pool BCFs in reference order with `bcftools concat`.
-11. **gembs_extract**: `mextr` bedMethyl, CpG/non-CpG and bigWig outputs.
-12. **extract_signal**: methylation-level bigWigs per context and strand.
-13. **get_methylc**: combine the three contexts into one sorted, indexed methylC file.
+10. **calling**: `bs_call` per pool, reading the BAM in place.
+11. **merge_chroms**: concatenate the pool BCFs in reference order with `bcftools concat`.
+12. **gembs_extract**: `mextr` bedMethyl, CpG/non-CpG and bigWig outputs.
+13. **extract_signal**: methylation-level bigWigs per context and strand.
+14. **get_methylc**: combine the three contexts into one sorted, indexed methylC file.
 
 ## Differences from gemBS-rs
 

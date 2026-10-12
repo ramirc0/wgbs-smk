@@ -24,6 +24,7 @@ set-threads:                # capped at --cores
   mapping: 52
   merge: 13
   bam_qc: 4
+  bam_md5: 1
   get_coverage: 13
   contig_pools: 1
   calling: 4

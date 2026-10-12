@@ -66,29 +66,33 @@ def mapping_fastqs(wildcards):
     }
 
 
+# One part maps straight to the final BAM, as gemBS maps a whole dataset.
+STEM = "{sample}" if len(SPLIT) == 1 else "{sample}.{part}"
+
+
 rule mapping:
     input:
         unpack(mapping_fastqs),
         gem_index=f"{REFDIR}/reference.gem",
         contig_md5=f"{REFDIR}/reference.contig_md5",
     output:
-        bam=temp(f"{OUTDIR}/{{sample}}/{{sample}}.{{part}}.bam"),
-        bam_csi=temp(f"{OUTDIR}/{{sample}}/{{sample}}.{{part}}.bam.csi"),
-        json=f"{OUTDIR}/{{sample}}/{{sample}}.{{part}}.json",
+        bam=(temp if len(SPLIT) > 1 else str)(f"{OUTDIR}/{{sample}}/{STEM}.bam"),
+        bam_csi=(temp if len(SPLIT) > 1 else str)(f"{OUTDIR}/{{sample}}/{STEM}.bam.csi"),
+        json=f"{OUTDIR}/{{sample}}/{STEM}.map.json",
     params:
         read_group=lambda w: read_group(w.sample),
-        sort_prefix=lambda w: f"{config['tmpdir']}/{w.sample}.{w.part}",
+        tmpdir=config["tmpdir"],
     log:
-        f"{LOGDIR}/mapping/{{sample}}.{{part}}.txt",
+        f"{LOGDIR}/mapping/{STEM}.txt",
     benchmark:
-        f"{BENCHDIR}/mapping/{{sample}}.{{part}}.tsv",
+        f"{BENCHDIR}/mapping/{STEM}.tsv",
     software:
         SOFTWARE_ENV
     shell:
         r"""
         exec &> >(tee {log:q})
 
-        mkdir -p $(dirname {params.sort_prefix:q})
+        mkdir -p {params.tmpdir:q}
         gem-mapper \
             --threads {threads} \
             -I {input.gem_index:q} \
@@ -101,38 +105,31 @@ rule mapping:
         | read_filter {input.contig_md5:q} \
         | samtools sort \
             -@ {threads} \
-            -T {params.sort_prefix:q} \
+            -T {params.tmpdir:q}/$(basename {output.bam:q}) \
             --write-index \
             -o {output.bam:q}##idx##{output.bam_csi:q} \
             -
         """
 
 
-rule merge:
-    input:
-        bams=expand(f"{OUTDIR}/{{{{sample}}}}/{{{{sample}}}}.{{part}}.bam", part=SPLIT),
-        csis=expand(f"{OUTDIR}/{{{{sample}}}}/{{{{sample}}}}.{{part}}.bam.csi", part=SPLIT),
-    output:
-        bam=f"{OUTDIR}/{{sample}}/{{sample}}.bam",
-        bam_csi=f"{OUTDIR}/{{sample}}/{{sample}}.bam.csi",
-        md5=f"{OUTDIR}/{{sample}}/{{sample}}.bam.md5",
-    params:
-        parts=len(SPLIT),
-    log:
-        f"{LOGDIR}/merge/{{sample}}.txt",
-    benchmark:
-        f"{BENCHDIR}/merge/{{sample}}.tsv",
-    software:
-        SOFTWARE_ENV
-    shell:
-        r"""
-        exec &> >(tee {log:q})
+if len(SPLIT) > 1:
 
-        if [[ {params.parts} -eq 1 ]]; then
-            # Not a hard link: Snakemake touches outputs, which would touch the inputs.
-            cp {input.bams:q} {output.bam:q}
-            cp {input.csis:q} {output.bam_csi:q}
-        else
+    rule merge:
+        input:
+            bams=expand(f"{OUTDIR}/{{sample}}/{STEM}.bam", part=SPLIT, allow_missing=True),
+        output:
+            bam=f"{OUTDIR}/{{sample}}/{{sample}}.bam",
+            bam_csi=f"{OUTDIR}/{{sample}}/{{sample}}.bam.csi",
+        log:
+            f"{LOGDIR}/merge/{{sample}}.txt",
+        benchmark:
+            f"{BENCHDIR}/merge/{{sample}}.tsv",
+        software:
+            SOFTWARE_ENV
+        shell:
+            r"""
+            exec &> >(tee {log:q})
+
             # -c and -p keep one @RG and @PG per dataset: every part has the same IDs.
             samtools merge \
                 -c \
@@ -141,15 +138,32 @@ rule merge:
                 --write-index \
                 -o {output.bam:q}##idx##{output.bam_csi:q} \
                 {input.bams:q}
-        fi
-        md5sum {output.bam:q} > {output.md5:q}
+            """
+
+
+rule bam_md5:
+    input:
+        bam=f"{OUTDIR}/{{sample}}/{{sample}}.bam",
+    output:
+        md5=f"{OUTDIR}/{{sample}}/{{sample}}.bam.md5",
+    log:
+        f"{LOGDIR}/bam_md5/{{sample}}.txt",
+    benchmark:
+        f"{BENCHDIR}/bam_md5/{{sample}}.tsv",
+    software:
+        SOFTWARE_ENV
+    shell:
+        r"""
+        exec &> >(tee {log:q})
+
+        md5sum {input.bam:q} > {output.md5:q}
         """
 
 
 rule bam_qc:
     input:
         bam=f"{OUTDIR}/{{sample}}/{{sample}}.bam",
-        jsons=expand(f"{OUTDIR}/{{{{sample}}}}/{{{{sample}}}}.{{part}}.json", part=SPLIT),
+        jsons=expand(f"{OUTDIR}/{{sample}}/{STEM}.map.json", part=SPLIT, allow_missing=True),
         chromsizes=f"{REFDIR}/chromsizes.tsv",
     output:
         json=f"{OUTDIR}/{{sample}}/{{sample}}.json",

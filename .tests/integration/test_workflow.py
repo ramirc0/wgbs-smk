@@ -136,28 +136,20 @@ def test_intermediates_are_removed(run):
 
 
 def test_fastq_split_one_maps_the_pair_whole(tmp_path, run):
-    """Check that fastq_split 1 maps the input pair without splitting it."""
+    """Check that fastq_split 1 maps the input pair straight to the final BAM.
+
+    A copy of a part would double the BAM's disk use and write time, and a hard
+    link fails Snakemake's output mtime check on SLURM.
+    """
     path = workdir(tmp_path, [("fastq_split: 2 ", "fastq_split: 1 ")])
-    run_ok(path, f"{PREFIX}/S001/S001.bam")
+    run_ok(path, "--notemp", f"{PREFIX}/S001/S001.bam")
     assert not (path / PREFIX / "S001/split").exists()
+    assert not list((path / PREFIX / "S001").glob("S001.0*.bam"))
     count = [
         tool("samtools", "view", "-c", p / PREFIX / "S001/S001.bam")
         for p in (path, run)
     ]
     assert count[0] == count[1]
-
-
-def test_one_part_is_not_linked_to_the_final_bam(tmp_path):
-    """Check that the final BAM is a file of its own when there is one part.
-
-    Snakemake touches each output after a remote job. A hard link would touch
-    its input too, and the mtime check then fails the job.
-    """
-    path = workdir(tmp_path, [("fastq_split: 2 ", "fastq_split: 1 ")])
-    run_ok(path, "--notemp", f"{PREFIX}/S001/S001.bam")
-    sample = path / PREFIX / "S001"
-    for ext in (".bam", ".bam.csi"):
-        assert not (sample / f"S001{ext}").samefile(sample / f"S001.001{ext}")
 
 
 def test_fastq_split_into_three_parts(tmp_path):
