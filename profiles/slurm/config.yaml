@@ -92,6 +92,8 @@ set-resources:
     mem_mb: 4000 * attempt
     runtime: 120m
   gembs_extract:
+    # mextr: 17.5 min on cascadelake, 31 on broadwell.
+    constraint: cascadelake
     slurm_partition: 4hours
     mem_mb: 16000 * attempt
     runtime: 240m
