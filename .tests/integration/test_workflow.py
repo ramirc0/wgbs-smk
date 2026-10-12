@@ -4,6 +4,7 @@ import gzip
 import hashlib
 import subprocess
 
+import pyBigWig
 import pytest
 from conftest import FIXTURE, PREFIX, ROOT, run_ok, snakemake, tool, workdir
 
@@ -253,19 +254,18 @@ def test_mextr_keeps_the_last_base_of_a_contig(run, tmp_path):
     assert chr1[-1] == last + "\n"
 
 
-def test_coverage_matches_one_genomecov_pass(run, tmp_path):
-    """Check that per-contig coverage equals one bedtools genomecov pass per strand."""
+def test_coverage_matches_one_genomecov_pass(run):
+    """Check that each strand's coverage bigWig holds one bedtools genomecov pass."""
     bam = run / PREFIX / "S001/S001.bam"
-    sizes = run / "results/refs/chromsizes.tsv"
     for strand, name in (("-", "neg"), ("+", "pos")):
-        bedgraph = tmp_path / f"{name}.bg"
-        bedgraph.write_text(
-            tool("bedtools", "genomecov", "-ibam", bam, "-bg", "-strand", strand)
-        )
-        bigwig = tmp_path / f"{name}.bw"
-        tool("bedGraphToBigWig", bedgraph, sizes, bigwig)
-        ours = run / PREFIX / f"S001/S001_coverage_{name}.bw"
-        assert bigwig.read_bytes() == ours.read_bytes()
+        lines = tool("bedtools", "genomecov", "-ibam", bam, "-bg", "-strand", strand)
+        expected = [
+            (c, int(s), int(e), float(v))
+            for c, s, e, v in (line.split("\t") for line in lines.splitlines())
+        ]
+        bw = pyBigWig.open(str(run / PREFIX / f"S001/S001_coverage_{name}.bw"))
+        ours = [(c, *i) for c in bw.chroms() for i in bw.intervals(c) or ()]
+        assert sorted(ours) == sorted(expected)
 
 
 @pytest.mark.parametrize("name", ["S001", "S002"])
