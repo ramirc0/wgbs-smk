@@ -26,6 +26,7 @@ set-threads:
   merge: 13
   bam_qc: 26
   bam_md5: 1
+  bcf_md5: 1
   get_coverage: 26
   contig_pools: 1
   # bs_call's --threads only sizes its htslib I/O pools.
@@ -67,6 +68,10 @@ set-resources:
     mem_mb: 16000 * attempt
     runtime: 240m
   bam_md5:
+    slurm_partition: 4hours
+    mem_mb: 1000 * attempt
+    runtime: 120m
+  bcf_md5:
     slurm_partition: 4hours
     mem_mb: 1000 * attempt
     runtime: 120m

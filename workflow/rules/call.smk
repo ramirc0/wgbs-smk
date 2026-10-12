@@ -84,7 +84,6 @@ rule merge_chroms:
     output:
         bcf=f"{OUTDIR}/{{sample}}/{{sample}}.bcf",
         bcf_csi=f"{OUTDIR}/{{sample}}/{{sample}}.bcf.csi",
-        bcf_md5=f"{OUTDIR}/{{sample}}/{{sample}}.bcf.md5",
     params:
         out_type=lambda w: config["calling"]["output_type"],
     log:
@@ -104,5 +103,23 @@ rule merge_chroms:
             --threads {threads} \
             {input.bcfs:q}
         bcftools index --threads {threads} {output.bcf:q}
-        md5sum {output.bcf:q} > {output.bcf_md5:q}
+        """
+
+
+rule bcf_md5:
+    input:
+        bcf=f"{OUTDIR}/{{sample}}/{{sample}}.bcf",
+    output:
+        md5=f"{OUTDIR}/{{sample}}/{{sample}}.bcf.md5",
+    log:
+        f"{LOGDIR}/bcf_md5/{{sample}}.txt",
+    benchmark:
+        f"{BENCHDIR}/bcf_md5/{{sample}}.tsv",
+    software:
+        SOFTWARE_ENV
+    shell:
+        r"""
+        exec &> >(tee {log:q})
+
+        md5sum {input.bcf:q} > {output.md5:q}
         """

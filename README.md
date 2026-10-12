@@ -209,9 +209,10 @@ Per sample, under `results/<run_id>/<sample>/`:
    own job. The rest are packed into `Pool@N` jobs of about that size.
 10. **calling**: `bs_call` per pool, reading the BAM in place.
 11. **merge_chroms**: concatenate the pool BCFs in reference order with `bcftools concat`.
-12. **gembs_extract**: `mextr` bedMethyl, CpG/non-CpG and bigWig outputs.
-13. **extract_signal**: methylation-level bigWigs per context and strand.
-14. **get_methylc**: combine the three contexts into one sorted, indexed methylC file.
+12. **bcf_md5**: checksum the merged BCF.
+13. **gembs_extract**: `mextr` bedMethyl, CpG/non-CpG and bigWig outputs.
+14. **extract_signal**: methylation-level bigWigs per context and strand.
+15. **get_methylc**: combine the three contexts into one sorted, indexed methylC file.
 
 ## Differences from gemBS-rs
 

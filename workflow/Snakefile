@@ -18,3 +18,4 @@ rule all:
         [f"{prefix(s)}_methylc.bed.gz" for s in SAMPLES],
         [f"{prefix(s)}.json" for s in SAMPLES],
         [f"{prefix(s)}.bam.md5" for s in SAMPLES],
+        [f"{prefix(s)}.bcf.md5" for s in SAMPLES],
