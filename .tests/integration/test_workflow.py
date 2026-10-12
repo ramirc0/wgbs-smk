@@ -228,6 +228,32 @@ def test_mextr_index_finds_each_site_at_its_position(run, name):
     assert [h.split("\t")[:3] for h in hits] == [[contig, start, end]]
 
 
+@pytest.mark.xfail(strict=True, reason="mextr drops the last base of each contig")
+def test_mextr_keeps_the_last_base_of_a_contig(run, tmp_path):
+    """Check that mextr reports a site on the contig's last base.
+
+    The toy reads stop short of the contig ends, so the test shortens chr1 in
+    the BCF header to end at its last reported site.
+    """
+    sample = run / PREFIX / "S001/S001"
+    last = tool("tabix", f"{sample}_non_cpg.txt.gz", "chr1").splitlines()[-1]
+    end = last.split("\t")[2]
+    hdr = tmp_path / "header.txt"
+    hdr.write_text(
+        tool("bcftools", "view", "-h", f"{sample}.bcf").replace(
+            "ID=chr1,length=2000", f"ID=chr1,length={end}"
+        )
+    )
+    bcf = tmp_path / "short.bcf"
+    tool("bcftools", "reheader", "-h", hdr, "-o", bcf, f"{sample}.bcf")
+    tool("bcftools", "index", bcf)
+    noncpg = tmp_path / "non_cpg.txt.gz"
+    tool("mextr", "--compress", "--noncpgfile", noncpg, "--threshold", "10", bcf)
+    with gzip.open(noncpg, "rt") as f:
+        chr1 = [line for line in f if line.startswith("chr1\t")]
+    assert chr1[-1] == last + "\n"
+
+
 def test_coverage_matches_one_genomecov_pass(run, tmp_path):
     """Check that per-contig coverage equals one bedtools genomecov pass per strand."""
     bam = run / PREFIX / "S001/S001.bam"
