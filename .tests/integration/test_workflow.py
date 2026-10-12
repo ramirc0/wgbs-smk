@@ -284,6 +284,22 @@ def test_qc_json_matches_one_samtools_stats_pass(run):
     assert report["samtools_stats"] == expected
 
 
+def test_methylc_holds_every_site_once_in_order(run):
+    """Check that the methylC file merges the three bedMethyl files, sorted."""
+    sample = run / PREFIX / "S001/S001"
+    sites = []
+    for context, name in (("CHH", "chh"), ("CHG", "chg"), ("CG", "cpg")):
+        with gzip.open(f"{sample}_{name}.bed.gz", "rt") as f:
+            next(f)
+            for line in f:
+                c, s, e, _, _, strand, _, _, _, cov, *_ = line.split("\t")
+                sites.append((c, int(s), int(e), context, strand, cov))
+    with gzip.open(f"{sample}_methylc.bed.gz", "rt") as f:
+        rows = [line.rstrip("\n").split("\t") for line in f]
+    ours = [(c, int(s), int(e), t, strand, cov) for c, s, e, t, _, strand, cov in rows]
+    assert ours == sorted(sites, key=lambda site: site[:2])
+
+
 @pytest.mark.parametrize("name", ["S001", "S002"])
 def test_every_sample_finishes(run, name):
     """Check that each sample gets its methylC file."""
