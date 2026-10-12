@@ -228,7 +228,6 @@ def test_mextr_index_finds_each_site_at_its_position(run, name):
     assert [h.split("\t")[:3] for h in hits] == [[contig, start, end]]
 
 
-@pytest.mark.xfail(strict=True, reason="mextr drops the last base of each contig")
 def test_mextr_keeps_the_last_base_of_a_contig(run, tmp_path):
     """Check that mextr reports a site on the contig's last base.
 

@@ -36,7 +36,7 @@ pixi run snakemake --profile profiles/slurm --configfile .tests/validation/confi
 - Point `TMPDIR` at a roomy local path, such as `/tmp/$USER`, for builds and test runs. Do not set it for a SLURM launch: jobs inherit it as `resources.tmpdir`.
 - gem-mapper learns insert sizes per thread, so alignments can shift with the thread count. Compare runs with different threads or `fastq_split` at the methylation level.
 - A SLURM run's jobs use the workflow source as it was at launch. A fix reaches them only after a relaunch. A killed head leaves a lock: run `--unlock` first.
-- Fix a bug only after a test that shows it. Known issues in README.md come from gemBS-rs.
+- Fix a bug only after a test that shows it.
 
 ## Verifying a change
 

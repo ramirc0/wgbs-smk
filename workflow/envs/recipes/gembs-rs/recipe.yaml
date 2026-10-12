@@ -11,9 +11,13 @@ package:
 source:
   git: https://github.com/heathsc/gemBS-rs.git
   rev: ${{ rev }}
+  # mextr writes 0-based region ends into strings htslib parses as 1-based,
+  # dropping each contig's last base. Not reported upstream.
+  patches:
+    - mextr-region-ends.patch
 
 build:
-  number: 0
+  number: 1
   script:
     - cd rust
     # The upstream Makefile generates this manifest. Cargo needs it to load the workspace.

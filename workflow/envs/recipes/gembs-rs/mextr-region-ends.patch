@@ -1,0 +1,11 @@
+--- a/rust/r_htslib/src/synced_bcf_reader.rs
++++ b/rust/r_htslib/src/synced_bcf_reader.rs
+@@ -205,7 +205,7 @@
+ 					if rg.start <= rg.end { 
+ 						if !first { reg_string.push(',') }
+ 						else { first = false }
+-						reg_string.push_str(format!("{}:{}-{}", seq, rg.start, rg.end).as_ref()); 
++						reg_string.push_str(format!("{}:{}-{}", seq, rg.start + 1, rg.end + 1).as_ref()); 
+ 					}
+ 				}
+ 			}
