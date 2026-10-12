@@ -14,7 +14,6 @@ rule gembs_extract:
             f"{OUTDIR}/{{sample}}/{{sample}}_neg.bw",
             f"{OUTDIR}/{{sample}}/{{sample}}_pos.bw",
         ],
-        # mextr writes a .md5 for every output and a .tbi for every text one.
         sidecars=[
             f"{OUTDIR}/{{sample}}/{{sample}}_{name}{ext}"
             for name, exts in [
@@ -33,7 +32,6 @@ rule gembs_extract:
         ],
     params:
         flags=lambda w: extract_flags(),
-        tmpdir=config["tmpdir"],
     log:
         f"{LOGDIR}/gembs_extract/{{sample}}.txt",
     benchmark:
@@ -44,27 +42,22 @@ rule gembs_extract:
         r"""
         exec &> >(tee {log:q})
 
-        # mextr's tabix thread reads each output back while it is written. On
-        # CephFS those reads come back short, so mextr writes to local disk.
-        mkdir -p {params.tmpdir:q}
-        STAGE=$(mktemp -d -p {params.tmpdir:q})
         mextr \
             --loglevel info \
             --compress \
             --md5 \
-            --cpgfile "$STAGE"/$(basename {output.cpgfile:q}) \
-            --noncpgfile "$STAGE"/$(basename {output.noncpgfile:q}) \
-            --bed-methyl "$STAGE"/{wildcards.sample:q} \
-            --tabix \
+            --cpgfile {output.cpgfile:q} \
+            --noncpgfile {output.noncpgfile:q} \
+            --bed-methyl $(dirname {output.cpgfile:q})/{wildcards.sample:q} \
             --threads {threads} \
             {params.flags:q} \
             {input.bcf:q}
 
-        # Each .md5 names its file as mextr was given it.
-        OUT=$(dirname {output.cpgfile:q})
-        sed -i "s|$STAGE/|$OUT/|" "$STAGE"/*.md5
-        mv "$STAGE"/* "$OUT"/
-        rmdir "$STAGE"
+        # Not mextr's --tabix: its index thread reads each file back while mextr
+        # writes it, which fails on large outputs, and it reads the 0-based start
+        # as 1-based.
+        parallel -j 5 tabix -0 -s 1 -b 2 -e 3 -S 1 ::: \
+            {output.cpgfile:q} {output.noncpgfile:q} {output.bed_gz:q}
         """
 
 

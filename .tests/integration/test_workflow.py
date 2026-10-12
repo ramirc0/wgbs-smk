@@ -215,6 +215,19 @@ def test_old_sheet_headers_name_the_new_ones(tmp_path):
     assert "Barcode, Dataset, File1, File2" in done.stdout + done.stderr
 
 
+@pytest.mark.parametrize(
+    "name", ["cpg.txt.gz", "non_cpg.txt.gz", "cpg.bed.gz", "chg.bed.gz", "chh.bed.gz"]
+)
+def test_mextr_index_finds_each_site_at_its_position(run, name):
+    """Check that a 1-based region query on a mextr file returns the site there."""
+    path = run / PREFIX / f"S001/S001_{name}"
+    with gzip.open(path, "rt") as f:
+        f.readline()
+        contig, start, end = f.readline().split("\t")[:3]
+    hits = tool("tabix", path, f"{contig}:{end}-{end}").splitlines()
+    assert [h.split("\t")[:3] for h in hits] == [[contig, start, end]]
+
+
 def test_coverage_matches_one_genomecov_pass(run, tmp_path):
     """Check that per-contig coverage equals one bedtools genomecov pass per strand."""
     bam = run / PREFIX / "S001/S001.bam"

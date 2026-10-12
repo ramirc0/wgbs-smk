@@ -109,8 +109,7 @@ The workflow stops with this hint when it finds the old names.
 
 - `samples`, `outdir`, `run_id`, `pixi_env`: as in the template.
 - `tmpdir`: node-local scratch for `samtools sort` and `gem-indexer` temporary
-  files and the `mextr` outputs. `mextr` reads its outputs back as it writes
-  them, which fails on CephFS.
+  files.
 - `references.reference`: reference FASTA, plain or gzipped.
 - `assembly`, `species` (optional): `AS` and `SP` tags of the SAM sequence
   dictionary. `species` MUST NOT contain whitespace.
@@ -228,6 +227,7 @@ The steps from indexing to `mextr` run gemBS-rs's commands with its
 | M5 hashes the raw sequence bytes; AS and SP come from FASTA headers | `samtools dict`: M5 of the uppercased sequence, AS and SP from the config |
 | Pool BCFs concatenated in file-name order | Concatenated in reference order |
 | `--regions-file` lists every contig for `mextr` | No regions file; `mextr` reads the same contigs |
+| `mextr --tabix` indexes the text outputs as it writes them | `tabix` indexes them afterwards. `mextr`'s index thread failed on all three ENCODE samples tried with gemBS-rs `dev`, and it reads the 0-based start as 1-based |
 | HTML and LaTeX QC reports, merged call JSON | ENCODE-style mapping QC JSON, coverage and per-context bigWigs, methylC |
 
 ## Known issues
@@ -235,9 +235,6 @@ The steps from indexing to `mextr` run gemBS-rs's commands with its
 These come from gemBS-rs and were found by reading its code. They are not
 tested here.
 
-- `mextr` indexes its text outputs with tabix's generic preset, which reads the
-  0-based start column as 1-based. Region queries on those `.tbi` files are off
-  by one base.
 - `mextr` rebuilds its regions as `contig:start-end` strings from 0-based
   coordinates and parses them as 1-based, which may drop the last base of each
   contig.
