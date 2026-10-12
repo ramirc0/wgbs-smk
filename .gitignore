@@ -231,3 +231,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Agent instructions, kept local
+.claude/CLAUDE.md
