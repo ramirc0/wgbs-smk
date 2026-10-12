@@ -2,11 +2,17 @@
 
 import gzip
 import hashlib
+import json
 import subprocess
+import sys
 
 import pyBigWig
 import pytest
 from conftest import FIXTURE, PREFIX, ROOT, run_ok, snakemake, tool, workdir
+
+sys.path.insert(0, str(ROOT / "workflow/scripts"))
+
+from make_average_coverage import numeric
 
 # bigWig files start with this magic number, little-endian.
 BIGWIG_MAGIC = bytes.fromhex("26fc8f88")
@@ -266,6 +272,16 @@ def test_coverage_matches_one_genomecov_pass(run):
         bw = pyBigWig.open(str(run / PREFIX / f"S001/S001_coverage_{name}.bw"))
         ours = [(c, *i) for c in bw.chroms() for i in bw.intervals(c) or ()]
         assert sorted(ours) == sorted(expected)
+
+
+def test_qc_json_matches_one_samtools_stats_pass(run):
+    """Check that the QC JSON's samtools stats equal one pass over the whole BAM."""
+    sample = run / PREFIX / "S001/S001"
+    lines = tool("samtools", "stats", f"{sample}.bam").splitlines()
+    fields = [line.split("\t") for line in lines if line.startswith("SN\t")]
+    expected = {f[1].strip(":"): numeric(f[2]) for f in fields}
+    report = json.loads(sample.with_suffix(".json").read_text())
+    assert report["samtools_stats"] == expected
 
 
 @pytest.mark.parametrize("name", ["S001", "S002"])
