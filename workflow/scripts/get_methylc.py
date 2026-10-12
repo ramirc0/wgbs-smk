@@ -1,9 +1,7 @@
 """Merge the CG, CHG and CHH bedMethyl files into one sorted, indexed methylC file."""
 
 import argparse
-import os
 import subprocess
-import tempfile
 from pathlib import Path
 
 import polars as pl
@@ -62,6 +60,26 @@ def read_methylc(bed_gz, context):
     )
 
 
+def contig_slices(df):
+    """Split a frame sorted by contig into one slice per contig.
+
+    Parameters
+    ----------
+    df : polars.DataFrame
+        Frame with a `chr` column, each contig's rows together.
+
+    Yields
+    ------
+    tuple of (str, polars.DataFrame)
+        Contig name and its rows, a slice that shares the frame's memory.
+    """
+    offset = 0
+    runs = df["chr"].rle().struct.unnest().select("value", "len")
+    for contig, length in runs.iter_rows():
+        yield contig, df.slice(offset, length)
+        offset += length
+
+
 def build_parser():
     """Build the get_methylc.py command-line parser.
 
@@ -79,15 +97,15 @@ def build_parser():
         "--threads", default=1, type=int, help="Threads for bgzip and tabix."
     )
     parser.add_argument("--outdir", required=True, type=Path, help="Output directory.")
-    parser.add_argument("--tmpdir", default=None, help="Directory for the parts.")
     return parser
 
 
 def main(argv=None):
     """Write `<outdir>/<barcode>_methylc.bed.gz` and its tabix index.
 
-    mextr sorts each file by contig name, then position. So a merge of the three
-    files, with sort -m, gives the fully sorted methylC file.
+    mextr sorts each file by contig name, then position, and no position is in
+    two contexts. So each contig's rows of the three files, sorted by start,
+    give the sorted methylC file.
 
     Parameters
     ----------
@@ -97,28 +115,22 @@ def main(argv=None):
     args = build_parser().parse_args(argv)
     args.outdir.mkdir(parents=True, exist_ok=True)
     methylc = args.outdir / f"{args.barcode}_methylc.bed.gz"
-    with tempfile.TemporaryDirectory(dir=args.tmpdir) as tmp:
-        parts = []
-        for context, bed_gz in (("CHH", args.chh), ("CHG", args.chg), ("CG", args.cpg)):
-            part = Path(tmp, f"{context}.bed")
-            read_methylc(bed_gz, context).write_csv(
-                part, separator="\t", include_header=False
-            )
-            parts.append(part)
-        merge = subprocess.Popen(
-            ["sort", "-m", "-k1,1", "-k2,2n", *parts],
-            stdout=subprocess.PIPE,
-            env={**os.environ, "LC_ALL": "C"},
+    pieces = {}
+    for context, bed_gz in (("CHH", args.chh), ("CHG", args.chg), ("CG", args.cpg)):
+        for contig, piece in contig_slices(read_methylc(bed_gz, context)):
+            pieces.setdefault(contig, []).append(piece)
+    with open(methylc, "wb") as out:
+        bgzip = subprocess.Popen(
+            ["bgzip", "-@", str(args.threads)], stdin=subprocess.PIPE, stdout=out
         )
-        with open(methylc, "wb") as out:
-            subprocess.run(
-                ["bgzip", "-@", str(args.threads)],
-                stdin=merge.stdout,
-                stdout=out,
-                check=True,
+        # Code point order, as LC_ALL=C sort orders the UTF-8 names.
+        for contig in sorted(pieces):
+            pl.concat(pieces[contig]).sort("start").write_csv(
+                bgzip.stdin, separator="\t", include_header=False
             )
-        if merge.wait() != 0:
-            raise SystemExit("sort -m failed")
+        bgzip.stdin.close()
+        if bgzip.wait() != 0:
+            raise SystemExit("bgzip failed")
     subprocess.run(["tabix", "-@", str(args.threads), "-p", "bed", methylc], check=True)
 
 

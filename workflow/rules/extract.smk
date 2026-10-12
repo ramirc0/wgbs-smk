@@ -108,8 +108,6 @@ rule get_methylc:
     output:
         methylc_bed_gz=f"{OUTDIR}/{{sample}}/{{sample}}_methylc.bed.gz",
         methylc_tbi=f"{OUTDIR}/{{sample}}/{{sample}}_methylc.bed.gz.tbi",
-    params:
-        tmpdir=config["tmpdir"],
     log:
         f"{LOGDIR}/get_methylc/{{sample}}.txt",
     benchmark:
@@ -120,13 +118,11 @@ rule get_methylc:
         r"""
         exec &> >(tee {log:q})
 
-        mkdir -p {params.tmpdir:q}
         python {workflow.basedir:q}/scripts/get_methylc.py \
             --barcode {wildcards.sample:q} \
             --chh {input.chh_bed_gz:q} \
             --chg {input.chg_bed_gz:q} \
             --cpg {input.cpg_bed_gz:q} \
             --threads {threads} \
-            --outdir $(dirname {output.methylc_bed_gz:q}) \
-            --tmpdir {params.tmpdir:q}
+            --outdir $(dirname {output.methylc_bed_gz:q})
         """
