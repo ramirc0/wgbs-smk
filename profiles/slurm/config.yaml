@@ -82,8 +82,8 @@ set-resources:
     # bwa-mem3 runs on any node. cascadelake nodes are faster.
     constraint: cascadelake
     slurm_partition: 5days
-    # The original and seed indexes, about 30 GB, plus samtools sort's 768 MB per thread.
-    mem_mb: 100000 * attempt
+    # bwa-mem3 peaks near 57 GB, plus samtools sort's 768 MB per thread.
+    mem_mb: 160000 * attempt
     runtime: 2880m
   merge:
     slurm_partition: 4hours
