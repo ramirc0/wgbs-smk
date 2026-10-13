@@ -1,8 +1,7 @@
 # WGBS Snakemake Pipeline
 
 A Snakemake workflow for whole genome bisulfite sequencing (WGBS). It maps
-paired-end reads with [GEM3](https://github.com/smarco/gem3-mapper),
-[minibwa](https://github.com/lh3/minibwa) or
+paired-end reads with [GEM3](https://github.com/smarco/gem3-mapper) or
 [bwa-mem3](https://github.com/fg-labs/bwa-mem3), calls methylation with
 [gemBS-rs](https://github.com/heathsc/gemBS-rs) `bs_call`, and extracts
 bedMethyl, methylC and bigWig tracks with `mextr`. It follows the
@@ -29,7 +28,7 @@ workflow/
   scripts/               argparse scripts, each with build_parser() + main()
   envs/
     pixi.toml            rule env (pixi workspace)
-    recipes/             gem3-mapper, gemBS-rs and minibwa, built from source
+    recipes/             gem3-mapper and gemBS-rs, built from source
 profiles/
   local/config.yaml      local execution
   slurm/config.yaml      SLURM (per-rule resources, retried with more memory)
@@ -85,8 +84,7 @@ pixi run test                                      # toy end-to-end tests (pytes
 
 Run from the repository root. Local runs suit small data only.
 
-The first job builds the rule env, which compiles gem3-mapper, gemBS-rs and
-minibwa.
+The first job builds the rule env, which compiles gem3-mapper and gemBS-rs.
 Build it once before launching many jobs:
 
 ```bash
@@ -121,8 +119,8 @@ The workflow stops with this hint when it finds the old names.
 - `fastq_split`: number of parts per FASTQ pair. With 1 (the default), one job
   maps the pair whole, as gemBS maps a dataset. With more, `seqkit split2`
   splits the pair and the parts are mapped in parallel and merged.
-- `aligner`: `gem3` (the default), `minibwa` or `bwa-mem3`. minibwa and
-  bwa-mem3 map directional libraries only.
+- `aligner`: `gem3` (the default) or `bwa-mem3`. bwa-mem3 maps directional
+  libraries only.
 - `calling.*`: `bs_call` output type, MAPQ and base-quality thresholds,
   reference bias, read trimming, and conversion rates
   (`under,over`, comma-delimited). `contig_pool_limit` (default 25 Mb, as in
@@ -164,7 +162,7 @@ software-deployment plugin and the SLURM executor plugins. The rule env is a
 second pixi workspace, `workflow/envs/`. Its `pixi.lock` pins every package.
 pixi MUST be on `PATH`.
 
-Most tools come from conda-forge and bioconda. Three are built from source by
+Most tools come from conda-forge and bioconda. Two are built from source by
 `pixi-build`:
 
 - gem3-mapper at `882b0d8` on its `gembs` branch, the commit gemBS-rs pins,
@@ -172,11 +170,10 @@ Most tools come from conda-forge and bioconda. Three are built from source by
   profile requests cascadelake nodes for its two rules for this reason.
 - gemBS-rs `dev` at `baf6056` (`bs_call` 3.1.2, `mextr` 2.1.0, `read_filter`).
   `master` last changed in 2022. None of the three is packaged on conda.
-- minibwa at `74bdd48` (0.7-r427) on `master`, compiled with its Makefile's
-  `-O3 -msse4.2`. It runs on any node. The SLURM profile sends its mapping
-  jobs to cascadelake nodes, which are faster.
 
-bwa-mem3 comes from bioconda. It picks its SIMD kernels at run time.
+bwa-mem3 comes from bioconda. It picks its SIMD kernels at run time, so it runs
+on any node. The SLURM profile sends its mapping jobs to cascadelake nodes,
+which are faster.
 
 Any change to a manifest, recipe, or lock reruns every rule.
 
@@ -200,23 +197,20 @@ Per sample, under `results/<run_id>/<sample>/`:
 
 - `reference.fasta` (+ `.fai`) and `chromsizes.tsv`;
 - `reference.contig_md5`, the LN, M5, AS and SP tags per contig, as in gemBS;
-- the GEM index `reference.gem` and its `reference.info`, the minibwa index
-  `reference.l2b` and `reference.meth.mbw`, or the bwa-mem3 index
-  `reference.fasta.*` with its seed index `reference.fasta.meth.*`;
+- the GEM index `reference.gem` and its `reference.info`, or the bwa-mem3
+  index `reference.fasta.*` with its seed index `reference.fasta.meth.*`;
 - `pools/`, one BED per `bs_call` job and their order in `pools.txt`.
 
 ## Pipeline steps
 
 1. **indexing**: decompress the reference, index it, write chromsizes and the contig metadata.
-2. **gem_indexer**, **minibwa_index** or **bwamem3_index**: build the aligner's
-   bisulfite index.
+2. **gem_indexer** or **bwamem3_index**: build the aligner's bisulfite index.
 3. **split**: split each FASTQ pair with `seqkit split2`.
-4. **mapping**, **mapping_minibwa** or **mapping_bwamem3**: map with
-   `gem-mapper`, `minibwa map --meth` or `bwa-mem3 mem --meth`, clean read
-   names and add the contig metadata with gemBS's `read_filter`, and sort, as
-   gemBS does. minibwa writes no bisulfite strand tag, so each of its reads
-   gets gem-mapper's `XB` tag from its flags. bwa-mem3 writes Bismark's `XG`
-   tag, which `bs_call` reads. With one part this writes the final BAM.
+4. **mapping** or **mapping_bwamem3**: map with `gem-mapper` or
+   `bwa-mem3 mem --meth`, clean read names and add the contig metadata with
+   gemBS's `read_filter`, and sort, as gemBS does. bwa-mem3 writes Bismark's
+   `XG` strand tag, which `bs_call` reads. With one part this writes the final
+   BAM.
 5. **merge**: with several parts, merge the sorted parts into one read group.
 6. **bam_md5**: checksum the final BAM.
 7. **bam_qc**: write the mapping QC JSON with `samtools stats` and average coverage.
@@ -238,7 +232,7 @@ The steps from indexing to `mextr` run gemBS-rs's commands with its
 
 | gemBS-rs | Here |
 |---|---|
-| gem-mapper | gem-mapper, or minibwa or bwa-mem3 for directional libraries |
+| gem-mapper | gem-mapper, or bwa-mem3 for directional libraries |
 | One sample can merge several datasets | One FASTQ pair per sample, optionally split into parts |
 | bgzipped reference copy (`gemBS.ref`) | Plain FASTA copy. `bs_call` reads both the same way |
 | M5 hashes the raw sequence bytes; AS and SP come from FASTA headers | `samtools dict`: M5 of the uppercased sequence, AS and SP from the config |
@@ -252,7 +246,7 @@ The steps from indexing to `mextr` run gemBS-rs's commands with its
 
 Heath, Simon. n.d. GemBS-Rs. Github. Accessed October 10, 2026. https://github.com/heathsc/gemBS-rs.
 
-Li, Heng, and Nils Homer. 2026. “Fast Genomic Read Alignment with Minibwa.” arXiv:2606.15357. https://arxiv.org/abs/2606.15357.
+Fulcrum Genomics. n.d. Bwa-Mem3. Github. Accessed October 13, 2026. https://github.com/fg-labs/bwa-mem3.
 
 Marco-Sola, Santiago, Michael Sammeth, Roderic Guigó, and Paolo Ribeca. 2012. “The GEM Mapper: Fast, Accurate and Versatile Alignment by Filtration.” Nature Methods 9 (12): 1185–88. https://doi.org/10.1038/nmeth.2221.
 

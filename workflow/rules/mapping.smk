@@ -69,12 +69,11 @@ def mapping_fastqs(wildcards):
 # One part maps straight to the final BAM, as gemBS maps a whole dataset.
 STEM = "{sample}" if len(SPLIT) == 1 else "{sample}.{part}"
 
-# gem-mapper writes a report per job. minibwa and bwa-mem3 write none.
+# gem-mapper writes a report per job. bwa-mem3 writes none.
 MAP_REPORTS = [f"{OUTDIR}/{{sample}}/{STEM}.map.json"] if ALIGNER == "gem3" else []
 
 INDEX = {
     "gem3": [f"{REFDIR}/reference.gem"],
-    "minibwa": [f"{REFDIR}/reference.l2b", f"{REFDIR}/reference.meth.mbw"],
     "bwa-mem3": multiext(
         f"{REFDIR}/reference.fasta",
         ".amb",
@@ -92,7 +91,7 @@ INDEX = {
 rule:
     # Each aligner's jobs get their own rule name, so the profiles can size them.
     name:
-        {"gem3": "mapping", "minibwa": "mapping_minibwa", "bwa-mem3": "mapping_bwamem3"}[ALIGNER]
+        "mapping_bwamem3" if ALIGNER == "bwa-mem3" else "mapping"
     input:
         unpack(mapping_fastqs),
         index=INDEX,
@@ -126,18 +125,6 @@ rule:
                 --bisulfite-conversion inferred-C2T-G2A \
                 --report-file {output.json:q} \
                 --sam-read-group-header {params.read_group:q}
-        elif [[ {params.aligner:q} == minibwa ]]; then
-            # bs_call counts a read without a strand tag as unconverted, and
-            # minibwa writes none. In a directional library, R1 forward and R2
-            # reverse are C-to-T: gem-mapper's XB:A:C.
-            minibwa map \
-                --meth \
-                -t {threads} \
-                -R {params.read_group:q} \
-                $(dirname {input.index[0]:q})/reference \
-                {input.r1:q} \
-                {input.r2:q} \
-            | awk '/^@/ {{print; next}} {{print $0 "\tXB:A:" (int($2 / 16) % 2 == int($2 / 128) % 2 ? "C" : "G")}}'
         else
             # bs_call reads the strand from XG:Z. XM:Z would add a third to the BAM.
             bwa-mem3 mem \

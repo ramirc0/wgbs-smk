@@ -233,7 +233,7 @@ def test_unknown_aligner_names_the_choices(tmp_path):
     path = workdir(tmp_path, [("aligner: gem3 ", "aligner: bwa ")])
     done = snakemake(path, "-n")
     assert done.returncode != 0
-    assert "gem3, minibwa or bwa-mem3" in done.stdout + done.stderr
+    assert "gem3 or bwa-mem3" in done.stdout + done.stderr
 
 
 @pytest.mark.parametrize(

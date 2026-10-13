@@ -337,7 +337,7 @@ def build_parser():
         "--gem_mapper_jsons",
         nargs="*",
         default=[],
-        help="gem-mapper JSON reports. minibwa writes none.",
+        help="gem-mapper JSON reports. bwa-mem3 writes none.",
     )
     parser.add_argument("--output", required=True, help="QC JSON to write.")
     return parser

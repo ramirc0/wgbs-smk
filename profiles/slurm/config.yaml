@@ -21,11 +21,9 @@ default-resources:
 set-threads:
   indexing: 4
   gem_indexer: 52
-  minibwa_index: 52
   bwamem3_index: 52
   split: 8
   mapping: 52
-  mapping_minibwa: 52
   mapping_bwamem3: 52
   merge: 13
   bam_qc: 26
@@ -62,17 +60,6 @@ set-resources:
     slurm_partition: 5days
     # gem-mapper plus samtools sort's 768 MB per thread.
     mem_mb: 160000 * attempt
-    runtime: 2880m
-  minibwa_index:
-    # libsais holds a 64-bit suffix array of four genome copies, about 115 GB for GRCh38.
-    mem_mb: 160000 * attempt
-    runtime: 240m
-  mapping_minibwa:
-    # minibwa runs on any node. cascadelake nodes are faster.
-    constraint: cascadelake
-    slurm_partition: 5days
-    # minibwa's index, about 10 GB, plus samtools sort's 768 MB per thread.
-    mem_mb: 80000 * attempt
     runtime: 2880m
   bwamem3_index:
     # About 12 bytes per base of the doubled seed text, four genome copies.
