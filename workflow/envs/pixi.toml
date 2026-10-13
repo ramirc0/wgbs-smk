@@ -19,6 +19,7 @@ gem3-mapper = { path = "recipes/gem3-mapper", package.build.backend = { name = "
 gembs-rs = { path = "recipes/gembs-rs", package.build.backend = { name = "pixi-build-rattler-build", version = "==0.4.7" } }
 minibwa = { path = "recipes/minibwa", package.build.backend = { name = "pixi-build-rattler-build", version = "==0.4.7" } }
 bigtools = "*"
+bwa-mem3 = "0.14.*"
 
 [feature.test.dependencies]
 pytest = "*"
