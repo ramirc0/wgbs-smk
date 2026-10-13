@@ -20,8 +20,10 @@ default-resources:          # fallback for trivial rules
 set-threads:                # capped at --cores
   indexing: 4
   gem_indexer: 52
+  minibwa_index: 52
   split: 8
   mapping: 52
+  mapping_minibwa: 52
   merge: 13
   bam_qc: 4
   bam_md5: 1

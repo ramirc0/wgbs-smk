@@ -95,15 +95,30 @@ def tool(*args):
     ).stdout
 
 
+@pytest.fixture(scope="session", params=["gem3", "minibwa"])
+def aligner(request):
+    """Return each aligner in turn.
+
+    Returns
+    -------
+    str
+        Value of the ``aligner`` config key.
+    """
+    return request.param
+
+
 @pytest.fixture(scope="session")
-def run(tmp_path_factory):
-    """Run the whole workflow once on the toy fixture.
+def run(tmp_path_factory, aligner):
+    """Run the whole workflow once per aligner on the toy fixture.
 
     Returns
     -------
     pathlib.Path
         Working directory of the run.
     """
-    path = workdir(tmp_path_factory.mktemp("run"))
+    path = workdir(
+        tmp_path_factory.mktemp(f"run-{aligner}"),
+        [("aligner: gem3 ", f"aligner: {aligner} ")],
+    )
     run_ok(path)
     return path

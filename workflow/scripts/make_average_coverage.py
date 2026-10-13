@@ -334,7 +334,10 @@ def build_parser():
         help="Contigs to run samtools stats on at once.",
     )
     parser.add_argument(
-        "--gem_mapper_jsons", nargs="+", required=True, help="gem-mapper JSON reports."
+        "--gem_mapper_jsons",
+        nargs="*",
+        default=[],
+        help="gem-mapper JSON reports. minibwa writes none.",
     )
     parser.add_argument("--output", required=True, help="QC JSON to write.")
     return parser

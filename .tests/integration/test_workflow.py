@@ -142,13 +142,19 @@ def test_intermediates_are_removed(run):
     assert leftovers == []
 
 
-def test_fastq_split_one_maps_the_pair_whole(tmp_path, run):
+def test_fastq_split_one_maps_the_pair_whole(tmp_path, run, aligner):
     """Check that fastq_split 1 maps the input pair straight to the final BAM.
 
     A copy of a part would double the BAM's disk use and write time, and a hard
     link fails Snakemake's output mtime check on SLURM.
     """
-    path = workdir(tmp_path, [("fastq_split: 2 ", "fastq_split: 1 ")])
+    path = workdir(
+        tmp_path,
+        [
+            ("fastq_split: 2 ", "fastq_split: 1 "),
+            ("aligner: gem3 ", f"aligner: {aligner} "),
+        ],
+    )
     run_ok(path, "--notemp", f"{PREFIX}/S001/S001.bam")
     assert not (path / PREFIX / "S001/split").exists()
     assert not list((path / PREFIX / "S001").glob("S001.0*.bam"))
@@ -220,6 +226,14 @@ def test_old_sheet_headers_name_the_new_ones(tmp_path):
     done = snakemake(path, "-n")
     assert done.returncode != 0
     assert "Barcode, Dataset, File1, File2" in done.stdout + done.stderr
+
+
+def test_unknown_aligner_names_the_choices(tmp_path):
+    """Check that an aligner other than gem3 or minibwa fails with the choices."""
+    path = workdir(tmp_path, [("aligner: gem3 ", "aligner: bwa ")])
+    done = snakemake(path, "-n")
+    assert done.returncode != 0
+    assert "gem3 or minibwa" in done.stdout + done.stderr
 
 
 @pytest.mark.parametrize(

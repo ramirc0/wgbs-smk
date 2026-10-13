@@ -20,6 +20,10 @@ SOFTWARE_ENV = pixi(workspace="../envs", env=config["pixi_env"], locked=True)
 
 SPLIT = [f"{part:03d}" for part in range(1, config["fastq_split"] + 1)]
 
+ALIGNER = config.get("aligner", "gem3")
+if ALIGNER not in ("gem3", "minibwa"):
+    raise WorkflowError(f"aligner is {ALIGNER!r}. It must be gem3 or minibwa.")
+
 
 _SHEET = Path(config["samples"])
 if not _SHEET.exists():
@@ -67,7 +71,7 @@ def prefix(sample):
 
 
 def read_group(sample):
-    """Return the gem-mapper `@RG` header line of a sample.
+    """Return the aligner's `@RG` header line of a sample.
 
     Parameters
     ----------
@@ -77,12 +81,13 @@ def read_group(sample):
     Returns
     -------
     str
-        Tab-separated line with `ID` and `PU` set to the sample's dataset,
-        `BC` to the sample ID, and an empty `SM`. The tabs are real characters,
-        not `\\t` escapes.
+        Line with `ID` and `PU` set to the sample's dataset, `BC` to the sample
+        ID, and an empty `SM`. For gem-mapper, real tab characters separate the
+        fields. minibwa rejects those, so its line has `\\t` escapes.
     """
     dataset = SHEET[sample]["dataset"].strip()
-    return f"@RG\tID:{dataset}\tSM:\tBC:{sample}\tPU:{dataset}"
+    line = f"@RG\tID:{dataset}\tSM:\tBC:{sample}\tPU:{dataset}"
+    return line.replace("\t", "\\t") if ALIGNER == "minibwa" else line
 
 
 def dict_flags():

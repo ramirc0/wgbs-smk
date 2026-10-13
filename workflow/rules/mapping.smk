@@ -69,17 +69,29 @@ def mapping_fastqs(wildcards):
 # One part maps straight to the final BAM, as gemBS maps a whole dataset.
 STEM = "{sample}" if len(SPLIT) == 1 else "{sample}.{part}"
 
+# gem-mapper writes a report per job. minibwa writes none.
+MAP_REPORTS = [f"{OUTDIR}/{{sample}}/{STEM}.map.json"] if ALIGNER == "gem3" else []
 
-rule mapping:
+INDEX = {
+    "gem3": [f"{REFDIR}/reference.gem"],
+    "minibwa": [f"{REFDIR}/reference.l2b", f"{REFDIR}/reference.meth.mbw"],
+}[ALIGNER]
+
+
+rule:
+    # Each aligner's jobs get their own rule name, so the profiles can size them.
+    name:
+        "mapping_minibwa" if ALIGNER == "minibwa" else "mapping"
     input:
         unpack(mapping_fastqs),
-        gem_index=f"{REFDIR}/reference.gem",
+        index=INDEX,
         contig_md5=f"{REFDIR}/reference.contig_md5",
     output:
         bam=(temp if len(SPLIT) > 1 else str)(f"{OUTDIR}/{{sample}}/{STEM}.bam"),
         bam_csi=(temp if len(SPLIT) > 1 else str)(f"{OUTDIR}/{{sample}}/{STEM}.bam.csi"),
-        json=f"{OUTDIR}/{{sample}}/{STEM}.map.json",
+        json=MAP_REPORTS,
     params:
+        aligner=ALIGNER,
         read_group=lambda w: read_group(w.sample),
         tmpdir=config["tmpdir"],
     log:
@@ -93,15 +105,29 @@ rule mapping:
         exec &> >(tee {log:q})
 
         mkdir -p {params.tmpdir:q}
-        gem-mapper \
-            --threads {threads} \
-            -I {input.gem_index:q} \
-            --i1 {input.r1:q} \
-            --i2 {input.r2:q} \
-            --paired-end-alignment \
-            --bisulfite-conversion inferred-C2T-G2A \
-            --report-file {output.json:q} \
-            --sam-read-group-header {params.read_group:q} \
+        if [[ {params.aligner:q} == gem3 ]]; then
+            gem-mapper \
+                --threads {threads} \
+                -I {input.index:q} \
+                --i1 {input.r1:q} \
+                --i2 {input.r2:q} \
+                --paired-end-alignment \
+                --bisulfite-conversion inferred-C2T-G2A \
+                --report-file {output.json:q} \
+                --sam-read-group-header {params.read_group:q}
+        else
+            # bs_call counts a read without a strand tag as unconverted, and
+            # minibwa writes none. In a directional library, R1 forward and R2
+            # reverse are C-to-T: gem-mapper's XB:A:C.
+            minibwa map \
+                --meth \
+                -t {threads} \
+                -R {params.read_group:q} \
+                $(dirname {input.index[0]:q})/reference \
+                {input.r1:q} \
+                {input.r2:q} \
+            | awk '/^@/ {{print; next}} {{print $0 "\tXB:A:" (int($2 / 16) % 2 == int($2 / 128) % 2 ? "C" : "G")}}'
+        fi \
         | read_filter {input.contig_md5:q} \
         | samtools sort \
             -@ {threads} \
@@ -163,7 +189,7 @@ rule bam_md5:
 rule bam_qc:
     input:
         bam=f"{OUTDIR}/{{sample}}/{{sample}}.bam",
-        jsons=expand(f"{OUTDIR}/{{sample}}/{STEM}.map.json", part=SPLIT, allow_missing=True),
+        jsons=expand(MAP_REPORTS, part=SPLIT, allow_missing=True),
         chromsizes=f"{REFDIR}/chromsizes.tsv",
     output:
         json=f"{OUTDIR}/{{sample}}/{{sample}}.json",

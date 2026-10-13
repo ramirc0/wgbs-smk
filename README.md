@@ -1,7 +1,8 @@
 # WGBS Snakemake Pipeline
 
 A Snakemake workflow for whole genome bisulfite sequencing (WGBS). It maps
-paired-end reads with [GEM3](https://github.com/smarco/gem3-mapper), calls
+paired-end reads with [GEM3](https://github.com/smarco/gem3-mapper) or
+[minibwa](https://github.com/lh3/minibwa), calls
 methylation with [gemBS-rs](https://github.com/heathsc/gemBS-rs) `bs_call`, and
 extracts bedMethyl, methylC and bigWig tracks with `mextr`. It follows the
 `snakemake-template` layout and conventions.
@@ -20,14 +21,14 @@ workflow/
   Snakefile              includes the rules + rule all
   rules/
     common.smk           config, sample sheet, path constants, helpers
-    indexing.smk         reference FASTA, chromsizes, contig metadata, GEM index
+    indexing.smk         reference FASTA, chromsizes, contig metadata, GEM or minibwa index
     mapping.smk          split, map, merge, mapping QC, strand coverage
     call.smk             contig pools, per-pool bs_call, merged BCF
     extract.smk          mextr, strand bigWigs, methylC
   scripts/               argparse scripts, each with build_parser() + main()
   envs/
     pixi.toml            rule env (pixi workspace)
-    recipes/             gem3-mapper and gemBS-rs, built from source
+    recipes/             gem3-mapper, gemBS-rs and minibwa, built from source
 profiles/
   local/config.yaml      local execution
   slurm/config.yaml      SLURM (per-rule resources, retried with more memory)
@@ -43,7 +44,7 @@ pyproject.toml           ruff + numpydoc config
 - **Sample sheet** is a TSV read once in `common.smk` into `SHEET`, one row
   dict per `sample_id`.
 - **Config -> flags**: helpers such as `call_flags()`, `extract_flags()` and
-  `dict_flags()` turn `config` into flag lists. `read_group()` builds the gem-mapper `@RG` line.
+  `dict_flags()` turn `config` into flag lists. `read_group()` builds the aligner's `@RG` line.
 - **Every rule** carries `log:`, `benchmark:`, and `software:`.
 
 ## Conventions
@@ -83,7 +84,8 @@ pixi run test                                      # toy end-to-end tests (pytes
 
 Run from the repository root. Local runs suit small data only.
 
-The first job builds the rule env, which compiles gem3-mapper and gemBS-rs.
+The first job builds the rule env, which compiles gem3-mapper, gemBS-rs and
+minibwa.
 Build it once before launching many jobs:
 
 ```bash
@@ -118,6 +120,8 @@ The workflow stops with this hint when it finds the old names.
 - `fastq_split`: number of parts per FASTQ pair. With 1 (the default), one job
   maps the pair whole, as gemBS maps a dataset. With more, `seqkit split2`
   splits the pair and the parts are mapped in parallel and merged.
+- `aligner`: `gem3` (the default) or `minibwa`. minibwa maps directional
+  libraries only.
 - `calling.*`: `bs_call` output type, MAPQ and base-quality thresholds,
   reference bias, read trimming, and conversion rates
   (`under,over`, comma-delimited). `contig_pool_limit` (default 25 Mb, as in
@@ -128,13 +132,14 @@ The workflow stops with this hint when it finds the old names.
 ## Tests
 
 `pixi run test` runs pytest over `.tests/`. The integration tests run every
-rule on scratch copies of the toy data in `.tests/integration/`: 2 kb of
-chr1-22, X, Y and one alt contig, a 1 kb chrM without reads, and two samples of
-simulated directional bisulfite reads with 80% CpG methylation. They check the
-BAM header and read groups, the pooling, the BCF order, the checksums, that
-every output is declared and every intermediate removed, and runs with other
-`fastq_split` values, reference names and contig names. The unit tests cover
-the contig pooling and the installed environments.
+rule, once per aligner, on scratch copies of the toy data in
+`.tests/integration/`: 2 kb of chr1-22, X, Y and one alt contig, a 1 kb chrM
+without reads, and two samples of simulated directional bisulfite reads with
+80% CpG methylation. They check the BAM header and read groups, the pooling,
+the BCF order, the checksums, the methylation levels, that every output is
+declared and every intermediate removed, and runs with other `fastq_split`
+values, reference names and contig names. The unit tests cover the contig
+pooling and the installed environments.
 
 The validation runs four ENCODE WGBS replicates end to end on full GRCh38: two
 each of K562 (ENCSR765JPC) and GM12878 (ENCSR890UQO). Its inputs live on the
@@ -158,7 +163,7 @@ software-deployment plugin and the SLURM executor plugins. The rule env is a
 second pixi workspace, `workflow/envs/`. Its `pixi.lock` pins every package.
 pixi MUST be on `PATH`.
 
-Most tools come from conda-forge and bioconda. Two are built from source by
+Most tools come from conda-forge and bioconda. Three are built from source by
 `pixi-build`:
 
 - gem3-mapper at `882b0d8` on its `gembs` branch, the commit gemBS-rs pins,
@@ -166,6 +171,9 @@ Most tools come from conda-forge and bioconda. Two are built from source by
   profile requests cascadelake nodes for its two rules for this reason.
 - gemBS-rs `dev` at `baf6056` (`bs_call` 3.1.2, `mextr` 2.1.0, `read_filter`).
   `master` last changed in 2022. None of the three is packaged on conda.
+- minibwa at `74bdd48` (0.7-r427) on `master`, compiled with its Makefile's
+  `-O3 -msse4.2`. It runs on any node. The SLURM profile sends its mapping
+  jobs to cascadelake nodes, which are faster.
 
 Any change to a manifest, recipe, or lock reruns every rule.
 
@@ -175,9 +183,9 @@ Per sample, under `results/<run_id>/<sample>/`:
 
 | Files | Step |
 |---|---|
-| `<s>.map.json`, or `<s>.NNN.map.json` per part | gem-mapper reports (`split/` FASTQs and part BAMs are temporary) |
+| `<s>.map.json`, or `<s>.NNN.map.json` per part | gem-mapper reports, with `aligner: gem3` (`split/` FASTQs and part BAMs are temporary) |
 | `<s>.bam`, `.bam.csi`, `.bam.md5` | Final alignments |
-| `<s>.json` | Mapping QC: gem-mapper reports, `samtools stats` and average coverage |
+| `<s>.json` | Mapping QC: any gem-mapper reports, `samtools stats` and average coverage |
 | `<s>_coverage_{neg,pos}.bw` | Strand-specific coverage (the bedGraphs are temporary) |
 | `<s>_<pool>.json` | Per-pool `bs_call` reports |
 | `<s>.bcf`, `.bcf.csi`, `.bcf.md5` | Whole-genome methylation calls |
@@ -189,17 +197,20 @@ Per sample, under `results/<run_id>/<sample>/`:
 
 - `reference.fasta` (+ `.fai`) and `chromsizes.tsv`;
 - `reference.contig_md5`, the LN, M5, AS and SP tags per contig, as in gemBS;
-- the GEM index `reference.gem` and its `reference.info`;
+- the GEM index `reference.gem` and its `reference.info`, or the minibwa
+  index `reference.l2b` and `reference.meth.mbw`;
 - `pools/`, one BED per `bs_call` job and their order in `pools.txt`.
 
 ## Pipeline steps
 
 1. **indexing**: decompress the reference, index it, write chromsizes and the contig metadata.
-2. **gem_indexer**: build the GEM bisulfite index.
+2. **gem_indexer** or **minibwa_index**: build the aligner's bisulfite index.
 3. **split**: split each FASTQ pair with `seqkit split2`.
-4. **mapping**: map with `gem-mapper`, clean read names and add the contig
-   metadata with gemBS's `read_filter`, and sort, as gemBS does. With one part
-   this writes the final BAM.
+4. **mapping** or **mapping_minibwa**: map with `gem-mapper` or
+   `minibwa map --meth`, clean read names and add the contig metadata with
+   gemBS's `read_filter`, and sort, as gemBS does. minibwa writes no
+   bisulfite strand tag, so each of its reads gets gem-mapper's `XB` tag from
+   its flags. With one part this writes the final BAM.
 5. **merge**: with several parts, merge the sorted parts into one read group.
 6. **bam_md5**: checksum the final BAM.
 7. **bam_qc**: write the mapping QC JSON with `samtools stats` and average coverage.
@@ -221,6 +232,7 @@ The steps from indexing to `mextr` run gemBS-rs's commands with its
 
 | gemBS-rs | Here |
 |---|---|
+| gem-mapper | gem-mapper, or minibwa for directional libraries |
 | One sample can merge several datasets | One FASTQ pair per sample, optionally split into parts |
 | bgzipped reference copy (`gemBS.ref`) | Plain FASTA copy. `bs_call` reads both the same way |
 | M5 hashes the raw sequence bytes; AS and SP come from FASTA headers | `samtools dict`: M5 of the uppercased sequence, AS and SP from the config |
@@ -233,6 +245,8 @@ The steps from indexing to `mextr` run gemBS-rs's commands with its
 ## References
 
 Heath, Simon. n.d. GemBS-Rs. Github. Accessed October 10, 2026. https://github.com/heathsc/gemBS-rs.
+
+Li, Heng, and Nils Homer. 2026. “Fast Genomic Read Alignment with Minibwa.” arXiv:2606.15357. https://arxiv.org/abs/2606.15357.
 
 Marco-Sola, Santiago, Michael Sammeth, Roderic Guigó, and Paolo Ribeca. 2012. “The GEM Mapper: Fast, Accurate and Versatile Alignment by Filtration.” Nature Methods 9 (12): 1185–88. https://doi.org/10.1038/nmeth.2221.
 

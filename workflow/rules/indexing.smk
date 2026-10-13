@@ -61,3 +61,29 @@ rule gem_indexer:
             --threads {threads} \
             --tmp-folder {params.tmpdir:q}/
         """
+
+
+rule minibwa_index:
+    input:
+        fasta=f"{REFDIR}/reference.fasta",
+    output:
+        l2b=f"{REFDIR}/reference.l2b",
+        meth_mbw=f"{REFDIR}/reference.meth.mbw",
+        # The plain index, which minibwa map --meth does not read.
+        mbw=temp(f"{REFDIR}/reference.mbw"),
+    log:
+        f"{LOGDIR}/minibwa_index.txt",
+    benchmark:
+        f"{BENCHDIR}/minibwa_index.tsv",
+    software:
+        SOFTWARE_ENV
+    shell:
+        r"""
+        exec &> >(tee {log:q})
+
+        minibwa index \
+            --meth \
+            -t {threads} \
+            {input.fasta:q} \
+            $(dirname {output.l2b:q})/reference
+        """
