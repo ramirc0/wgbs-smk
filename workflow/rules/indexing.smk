@@ -87,3 +87,39 @@ rule minibwa_index:
             {input.fasta:q} \
             $(dirname {output.l2b:q})/reference
         """
+
+
+rule bwamem3_index:
+    input:
+        fasta=f"{REFDIR}/reference.fasta",
+    output:
+        index=multiext(
+            f"{REFDIR}/reference.fasta",
+            ".amb",
+            ".ann",
+            ".bwt.2bit.64",
+            ".pac",
+            ".meth.amb",
+            ".meth.ann",
+            ".meth.bwt.2bit.64",
+            ".meth.pac",
+        ),
+        # The converted FASTA of the seed index, which mem --meth does not read.
+        meth_fasta=temp(f"{REFDIR}/reference.fasta.meth.fa"),
+    log:
+        f"{LOGDIR}/bwamem3_index.txt",
+    benchmark:
+        f"{BENCHDIR}/bwamem3_index.tsv",
+    software:
+        SOFTWARE_ENV
+    shell:
+        r"""
+        exec &> >(tee {log:q})
+
+        # Scratch beside the index, off the node's shared /tmp.
+        bwa-mem3 index \
+            --meth \
+            -t {threads} \
+            --tmp-dir $(dirname {input.fasta:q}) \
+            {input.fasta:q}
+        """

@@ -229,11 +229,11 @@ def test_old_sheet_headers_name_the_new_ones(tmp_path):
 
 
 def test_unknown_aligner_names_the_choices(tmp_path):
-    """Check that an aligner other than gem3 or minibwa fails with the choices."""
+    """Check that an unknown aligner fails with the choices."""
     path = workdir(tmp_path, [("aligner: gem3 ", "aligner: bwa ")])
     done = snakemake(path, "-n")
     assert done.returncode != 0
-    assert "gem3 or minibwa" in done.stdout + done.stderr
+    assert "gem3, minibwa or bwa-mem3" in done.stdout + done.stderr
 
 
 @pytest.mark.parametrize(

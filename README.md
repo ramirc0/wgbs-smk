@@ -1,10 +1,11 @@
 # WGBS Snakemake Pipeline
 
 A Snakemake workflow for whole genome bisulfite sequencing (WGBS). It maps
-paired-end reads with [GEM3](https://github.com/smarco/gem3-mapper) or
-[minibwa](https://github.com/lh3/minibwa), calls
-methylation with [gemBS-rs](https://github.com/heathsc/gemBS-rs) `bs_call`, and
-extracts bedMethyl, methylC and bigWig tracks with `mextr`. It follows the
+paired-end reads with [GEM3](https://github.com/smarco/gem3-mapper),
+[minibwa](https://github.com/lh3/minibwa) or
+[bwa-mem3](https://github.com/fg-labs/bwa-mem3), calls methylation with
+[gemBS-rs](https://github.com/heathsc/gemBS-rs) `bs_call`, and extracts
+bedMethyl, methylC and bigWig tracks with `mextr`. It follows the
 `snakemake-template` layout and conventions.
 
 ## Layout
@@ -21,7 +22,7 @@ workflow/
   Snakefile              includes the rules + rule all
   rules/
     common.smk           config, sample sheet, path constants, helpers
-    indexing.smk         reference FASTA, chromsizes, contig metadata, GEM or minibwa index
+    indexing.smk         reference FASTA, chromsizes, contig metadata, aligner index
     mapping.smk          split, map, merge, mapping QC, strand coverage
     call.smk             contig pools, per-pool bs_call, merged BCF
     extract.smk          mextr, strand bigWigs, methylC
@@ -120,8 +121,8 @@ The workflow stops with this hint when it finds the old names.
 - `fastq_split`: number of parts per FASTQ pair. With 1 (the default), one job
   maps the pair whole, as gemBS maps a dataset. With more, `seqkit split2`
   splits the pair and the parts are mapped in parallel and merged.
-- `aligner`: `gem3` (the default) or `minibwa`. minibwa maps directional
-  libraries only.
+- `aligner`: `gem3` (the default), `minibwa` or `bwa-mem3`. minibwa and
+  bwa-mem3 map directional libraries only.
 - `calling.*`: `bs_call` output type, MAPQ and base-quality thresholds,
   reference bias, read trimming, and conversion rates
   (`under,over`, comma-delimited). `contig_pool_limit` (default 25 Mb, as in
@@ -175,6 +176,8 @@ Most tools come from conda-forge and bioconda. Three are built from source by
   `-O3 -msse4.2`. It runs on any node. The SLURM profile sends its mapping
   jobs to cascadelake nodes, which are faster.
 
+bwa-mem3 comes from bioconda. It picks its SIMD kernels at run time.
+
 Any change to a manifest, recipe, or lock reruns every rule.
 
 ## Outputs
@@ -197,20 +200,23 @@ Per sample, under `results/<run_id>/<sample>/`:
 
 - `reference.fasta` (+ `.fai`) and `chromsizes.tsv`;
 - `reference.contig_md5`, the LN, M5, AS and SP tags per contig, as in gemBS;
-- the GEM index `reference.gem` and its `reference.info`, or the minibwa
-  index `reference.l2b` and `reference.meth.mbw`;
+- the GEM index `reference.gem` and its `reference.info`, the minibwa index
+  `reference.l2b` and `reference.meth.mbw`, or the bwa-mem3 index
+  `reference.fasta.*` with its seed index `reference.fasta.meth.*`;
 - `pools/`, one BED per `bs_call` job and their order in `pools.txt`.
 
 ## Pipeline steps
 
 1. **indexing**: decompress the reference, index it, write chromsizes and the contig metadata.
-2. **gem_indexer** or **minibwa_index**: build the aligner's bisulfite index.
+2. **gem_indexer**, **minibwa_index** or **bwamem3_index**: build the aligner's
+   bisulfite index.
 3. **split**: split each FASTQ pair with `seqkit split2`.
-4. **mapping** or **mapping_minibwa**: map with `gem-mapper` or
-   `minibwa map --meth`, clean read names and add the contig metadata with
-   gemBS's `read_filter`, and sort, as gemBS does. minibwa writes no
-   bisulfite strand tag, so each of its reads gets gem-mapper's `XB` tag from
-   its flags. With one part this writes the final BAM.
+4. **mapping**, **mapping_minibwa** or **mapping_bwamem3**: map with
+   `gem-mapper`, `minibwa map --meth` or `bwa-mem3 mem --meth`, clean read
+   names and add the contig metadata with gemBS's `read_filter`, and sort, as
+   gemBS does. minibwa writes no bisulfite strand tag, so each of its reads
+   gets gem-mapper's `XB` tag from its flags. bwa-mem3 writes Bismark's `XG`
+   tag, which `bs_call` reads. With one part this writes the final BAM.
 5. **merge**: with several parts, merge the sorted parts into one read group.
 6. **bam_md5**: checksum the final BAM.
 7. **bam_qc**: write the mapping QC JSON with `samtools stats` and average coverage.
@@ -232,7 +238,7 @@ The steps from indexing to `mextr` run gemBS-rs's commands with its
 
 | gemBS-rs | Here |
 |---|---|
-| gem-mapper | gem-mapper, or minibwa for directional libraries |
+| gem-mapper | gem-mapper, or minibwa or bwa-mem3 for directional libraries |
 | One sample can merge several datasets | One FASTQ pair per sample, optionally split into parts |
 | bgzipped reference copy (`gemBS.ref`) | Plain FASTA copy. `bs_call` reads both the same way |
 | M5 hashes the raw sequence bytes; AS and SP come from FASTA headers | `samtools dict`: M5 of the uppercased sequence, AS and SP from the config |

@@ -95,7 +95,7 @@ def tool(*args):
     ).stdout
 
 
-@pytest.fixture(scope="session", params=["gem3", "minibwa"])
+@pytest.fixture(scope="session", params=["gem3", "minibwa", "bwa-mem3"])
 def aligner(request):
     """Return each aligner in turn.
 

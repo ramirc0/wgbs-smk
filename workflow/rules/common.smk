@@ -21,8 +21,8 @@ SOFTWARE_ENV = pixi(workspace="../envs", env=config["pixi_env"], locked=True)
 SPLIT = [f"{part:03d}" for part in range(1, config["fastq_split"] + 1)]
 
 ALIGNER = config.get("aligner", "gem3")
-if ALIGNER not in ("gem3", "minibwa"):
-    raise WorkflowError(f"aligner is {ALIGNER!r}. It must be gem3 or minibwa.")
+if ALIGNER not in ("gem3", "minibwa", "bwa-mem3"):
+    raise WorkflowError(f"aligner is {ALIGNER!r}. It must be gem3, minibwa or bwa-mem3.")
 
 
 _SHEET = Path(config["samples"])
@@ -83,11 +83,12 @@ def read_group(sample):
     str
         Line with `ID` and `PU` set to the sample's dataset, `BC` to the sample
         ID, and an empty `SM`. For gem-mapper, real tab characters separate the
-        fields. minibwa rejects those, so its line has `\\t` escapes.
+        fields. minibwa and bwa-mem3 reject those, so their line has `\\t`
+        escapes.
     """
     dataset = SHEET[sample]["dataset"].strip()
     line = f"@RG\tID:{dataset}\tSM:\tBC:{sample}\tPU:{dataset}"
-    return line.replace("\t", "\\t") if ALIGNER == "minibwa" else line
+    return line if ALIGNER == "gem3" else line.replace("\t", "\\t")
 
 
 def dict_flags():

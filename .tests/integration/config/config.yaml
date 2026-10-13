@@ -15,7 +15,7 @@ index:
 
 fastq_split: 2           # parts per FASTQ pair; 2 tests the split and merge
 
-aligner: gem3            # gem3 or minibwa; minibwa maps directional libraries only
+aligner: gem3            # gem3, minibwa or bwa-mem3; the last two map directional libraries only
 
 calling:
   output_type: b         # bs_call --output-type (b: BCF, v: VCF, ...)
