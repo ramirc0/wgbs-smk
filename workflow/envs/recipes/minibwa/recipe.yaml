@@ -1,0 +1,34 @@
+# Master after 0.7, the bioconda release: f0e1174 makes errors exit non-zero,
+# and r427 fixes the mismatch count of ungapped extensions.
+context:
+  version: "0.7"
+  rev: 74bdd485f2517fdd322faa1fd8eb36ecf297743d
+
+package:
+  name: minibwa
+  version: ${{ version }}.r427
+
+source:
+  git: https://github.com/lh3/minibwa.git
+  rev: ${{ rev }}
+
+build:
+  number: 0
+  script:
+    # The Makefile's own CFLAGS (-O3 -msse4.2): the binary runs on every node.
+    # conda's CPPFLAGS would add -O2 and -DNDEBUG after them.
+    - make CC="$CC" INCLUDES="-I$PREFIX/include" LDFLAGS="$LDFLAGS" minibwa
+    - install -d "$PREFIX/bin"
+    - install -m 0755 minibwa "$PREFIX/bin/"
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - make
+  host:
+    - zlib
+
+about:
+  homepage: https://github.com/lh3/minibwa
+  license: GPL-2.0-or-later
+  summary: minibwa from master after its 0.7 release.
