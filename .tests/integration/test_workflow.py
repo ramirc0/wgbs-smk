@@ -300,6 +300,25 @@ def test_methylc_holds_every_site_once_in_order(run):
     assert ours == sorted(sites, key=lambda site: site[:2])
 
 
+def test_methylation_matches_the_simulated_levels(run):
+    """Check that the calls recover the toy reads' 80% CpG and 0% non-CpG methylation."""
+    sample = run / PREFIX / "S001/S001"
+    levels = {}
+    for context in ("cpg", "chg", "chh"):
+        coverage = methylated = 0
+        with gzip.open(f"{sample}_{context}.bed.gz", "rt") as f:
+            next(f)
+            for line in f:
+                fields = line.split("\t")
+                coverage += int(fields[9])
+                methylated += int(fields[9]) * float(fields[10]) / 100
+        assert coverage, f"no {context} calls"
+        levels[context] = methylated / coverage
+    assert abs(levels["cpg"] - 0.8) < 0.03, levels
+    assert levels["chg"] < 0.01, levels
+    assert levels["chh"] < 0.01, levels
+
+
 @pytest.mark.parametrize("name", ["S001", "S002"])
 def test_every_sample_finishes(run, name):
     """Check that each sample gets its methylC file."""
