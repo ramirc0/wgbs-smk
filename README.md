@@ -109,8 +109,8 @@ The workflow stops with this hint when it finds the old names.
 ### Configuration
 
 - `samples`, `outdir`, `run_id`, `pixi_env`: as in the template.
-- `tmpdir`: node-local scratch for `samtools sort` and `gem-indexer` temporary
-  files.
+- `tmpdir`: node-local scratch for `gem-indexer` and coverage temporary files.
+  `samtools sort` spills beside each BAM instead.
 - `references.reference`: reference FASTA, plain or gzipped.
 - `assembly`, `species` (optional): `AS` and `SP` tags of the SAM sequence
   dictionary. `species` MUST NOT contain whitespace.

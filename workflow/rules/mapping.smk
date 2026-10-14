@@ -100,10 +100,11 @@ rule:
         bam=(temp if len(SPLIT) > 1 else str)(f"{OUTDIR}/{{sample}}/{STEM}.bam"),
         bam_csi=(temp if len(SPLIT) > 1 else str)(f"{OUTDIR}/{{sample}}/{STEM}.bam.csi"),
         json=MAP_REPORTS,
+        # samtools sort spills about the BAM's size, more than some nodes' /tmp holds.
+        spill=temp(directory(f"{OUTDIR}/{{sample}}/{STEM}.sort")),
     params:
         aligner=ALIGNER,
         read_group=lambda w: read_group(w.sample),
-        tmpdir=config["tmpdir"],
     log:
         f"{LOGDIR}/mapping/{STEM}.txt",
     benchmark:
@@ -114,7 +115,7 @@ rule:
         r"""
         exec &> >(tee {log:q})
 
-        mkdir -p {params.tmpdir:q}
+        mkdir -p {output.spill:q}
         if [[ {params.aligner:q} == gem3 ]]; then
             gem-mapper \
                 --threads {threads} \
@@ -139,7 +140,7 @@ rule:
         | read_filter {input.contig_md5:q} \
         | samtools sort \
             -@ {threads} \
-            -T {params.tmpdir:q}/$(basename {output.bam:q}) \
+            -T {output.spill:q}/part \
             --write-index \
             -o {output.bam:q}##idx##{output.bam_csi:q} \
             -

@@ -132,12 +132,13 @@ def test_tmpdir_is_empty_after_the_run(run):
 
 
 def test_intermediates_are_removed(run):
-    """Check that split FASTQs, per-part BAMs and coverage bedGraphs are temporary."""
+    """Check that split FASTQs, part BAMs, sort spills and bedGraphs are temporary."""
     sample = run / PREFIX / "S001"
     leftovers = [
         *sample.glob("split/*.fastq.gz"),
         *sample.glob("S001.[0-9]*.bam"),
         *sample.glob("*.bg"),
+        *sample.glob("*.sort"),
     ]
     assert leftovers == []
 
@@ -165,7 +166,6 @@ def test_fastq_split_one_maps_the_pair_whole(tmp_path, run, aligner):
     assert count[0] == count[1]
 
 
-@pytest.mark.xfail(strict=True, reason="samtools sort spills to tmpdir")
 @pytest.mark.parametrize("aligner", ["gem3", "bwa-mem3"])
 def test_sort_spills_beside_the_bam(tmp_path, aligner):
     """Check that samtools sort spills beside the BAM, not in tmpdir.
