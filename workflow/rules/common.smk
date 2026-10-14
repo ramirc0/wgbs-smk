@@ -18,6 +18,12 @@ REFERENCE = config["references"]["reference"]
 # The workspace path is relative to the rule file. Every rule file sits in rules/.
 SOFTWARE_ENV = pixi(workspace="../envs", env=config["pixi_env"], locked=True)
 
+
+# The pixi plugin installs the env inside each job. Parallel SLURM jobs then race
+# on a fresh or relocked env, so install it once before any job starts.
+onstart:
+    shell("pixi install --manifest-path {workflow.basedir:q}/envs/pixi.toml --all --locked")
+
 SPLIT = [f"{part:03d}" for part in range(1, config["fastq_split"] + 1)]
 
 ALIGNER = config.get("aligner", "gem3")

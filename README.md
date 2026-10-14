@@ -84,12 +84,9 @@ pixi run test                                      # toy end-to-end tests (pytes
 
 Run from the repository root. Local runs suit small data only.
 
-The first job builds the rule env, which compiles gem3-mapper and gemBS-rs.
-Build it once before launching many jobs:
-
-```bash
-pixi install --locked --manifest-path workflow/envs/pixi.toml
-```
+An `onstart` hook builds the rule env before the first job. The first build
+compiles gem3-mapper and gemBS-rs. Parallel SLURM jobs would otherwise race to
+install it.
 
 Tune `set-resources` in the profiles from the `benchmarks/<run_id>/` TSVs after
 a first run.
