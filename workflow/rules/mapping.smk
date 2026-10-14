@@ -39,6 +39,8 @@ rule split:
             -j {threads} \
             -f
         rm -r "$STAGE"
+
+        sync {output:q}
         """
 
 
@@ -144,6 +146,8 @@ rule:
             --write-index \
             -o {output.bam:q}##idx##{output.bam_csi:q} \
             -
+
+        sync {output:q}
         """
 
 
@@ -173,6 +177,8 @@ if len(SPLIT) > 1:
                 --write-index \
                 -o {output.bam:q}##idx##{output.bam_csi:q} \
                 {input.bams:q}
+
+            sync {output:q}
             """
 
 
@@ -192,6 +198,8 @@ rule bam_md5:
         exec &> >(tee {log:q})
 
         md5sum {input.bam:q} > {output.md5:q}
+
+        sync {output:q}
         """
 
 
@@ -218,6 +226,8 @@ rule bam_qc:
             --threads {threads} \
             --gem_mapper_jsons {input.jsons:q} \
             --output {output.json:q}
+
+        sync {output:q}
         """
 
 
@@ -264,4 +274,6 @@ rule get_coverage:
             ::: neg pos \
             :::+ {output.coverage_bigwigs:q}
         rm -r "$STAGE"
+
+        sync {output:q}
         """

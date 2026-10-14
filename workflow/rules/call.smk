@@ -19,6 +19,8 @@ checkpoint contig_pools:
             --chromsizes {input.chromsizes:q} \
             --limit {params.limit:q} \
             --output-dir {output.pools:q}
+
+        sync {output:q}
         """
 
 
@@ -58,6 +60,8 @@ rule calling:
             --threads {threads} \
             {params.flags:q} \
             {input.bam:q}
+
+        sync {output:q}
         """
 
 
@@ -103,6 +107,8 @@ rule merge_chroms:
             --threads {threads} \
             {input.bcfs:q}
         bcftools index --threads {threads} {output.bcf:q}
+
+        sync {output:q}
         """
 
 
@@ -122,4 +128,6 @@ rule bcf_md5:
         exec &> >(tee {log:q})
 
         md5sum {input.bcf:q} > {output.md5:q}
+
+        sync {output:q}
         """

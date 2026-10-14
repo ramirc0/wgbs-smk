@@ -29,6 +29,8 @@ rule indexing:
         # gemBS's contig_md5 format: the @SQ fields without the record type and SN:.
         samtools dict {params.dict_flags:q} {output.fasta:q} \
             | sed -n 's/^@SQ\tSN://p' > {output.contig_md5:q}
+
+        sync {output:q}
         """
 
 
@@ -60,6 +62,8 @@ rule gem_indexer:
             --text-sampling-rate {params.sampling_rate:q} \
             --threads {threads} \
             --tmp-folder {params.tmpdir:q}/
+
+        sync {output:q}
         """
 
 
@@ -96,4 +100,6 @@ rule bwamem3_index:
             -t {threads} \
             --tmp-dir $(dirname {input.fasta:q}) \
             {input.fasta:q}
+
+        sync {output:q}
         """

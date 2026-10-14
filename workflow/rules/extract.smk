@@ -58,6 +58,8 @@ rule gembs_extract:
         # as 1-based.
         parallel -j 5 tabix -0 -s 1 -b 2 -e 3 -S 1 ::: \
             {output.cpgfile:q} {output.noncpgfile:q} {output.bed_gz:q}
+
+        sync {output:q}
         """
 
 
@@ -98,6 +100,8 @@ rule extract_signal:
             --barcode {wildcards.sample:q} \
             --threads {threads} \
             --tmpdir {params.tmpdir:q}
+
+        sync {output:q}
         """
 
 
@@ -126,4 +130,6 @@ rule get_methylc:
             --cpg {input.cpg_bed_gz:q} \
             --threads {threads} \
             --outdir $(dirname {output.methylc_bed_gz:q})
+
+        sync {output:q}
         """
