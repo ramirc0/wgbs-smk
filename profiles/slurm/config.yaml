@@ -6,7 +6,7 @@ software-deployment-method:
 software-deployment-cache-prefix: ~/.cache/snakemake/software
 
 jobs: 40
-max-jobs-per-second: 5
+max-jobs-per-timespan: 5/1s
 
 slurm-efficiency-report: true
 slurm-efficiency-report-path: logs/efficiency
