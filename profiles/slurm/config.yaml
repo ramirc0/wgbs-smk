@@ -5,7 +5,7 @@ software-deployment-method:
 # One copy per user instead of one per workdir.
 software-deployment-cache-prefix: ~/.cache/snakemake/software
 
-jobs: 40
+jobs: unlimited
 max-jobs-per-timespan: 5/1s
 # ILP re-solves a model per batch of finished jobs. It only pays off with temp()
 # outputs. Greedy starts big-input jobs first, so give a small blocking rule `priority:`.
