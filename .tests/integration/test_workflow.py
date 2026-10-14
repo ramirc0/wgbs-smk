@@ -165,6 +165,21 @@ def test_fastq_split_one_maps_the_pair_whole(tmp_path, run, aligner):
     assert count[0] == count[1]
 
 
+@pytest.mark.xfail(strict=True, reason="samtools sort spills to tmpdir")
+@pytest.mark.parametrize("aligner", ["gem3", "bwa-mem3"])
+def test_sort_spills_beside_the_bam(tmp_path, aligner):
+    """Check that samtools sort spills beside the BAM, not in tmpdir.
+
+    The spill is about the BAM's size. A large sample's spill outgrows the
+    220 GB /tmp of some nodes. The toy reads sort in memory, so the test reads
+    the planned command.
+    """
+    path = workdir(tmp_path, [("aligner: gem3 ", f"aligner: {aligner} ")])
+    done = snakemake(path, "-n", "-p", f"{PREFIX}/S001/S001.001.bam")
+    assert done.returncode == 0, done.stderr[-5000:]
+    assert f"-T {PREFIX}/S001/S001.001.sort/" in done.stdout
+
+
 def test_fastq_split_into_three_parts(tmp_path):
     """Check that fastq_split other than 2 maps every part."""
     path = workdir(tmp_path, [("fastq_split: 2 ", "fastq_split: 3 ")])
