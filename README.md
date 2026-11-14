@@ -7,7 +7,79 @@ paired-end reads with [GEM3](https://github.com/smarco/gem3-mapper) or
 bedMethyl, methylC and bigWig tracks with `mextr`. It follows the
 `snakemake-template` layout and conventions.
 
-## Layout
+## Description
+
+The workflow indexes the reference, maps each FASTQ pair, calls methylation per
+contig pool and merges the calls. It then writes bedMethyl, methylC and bigWig
+tracks per sample. It runs locally or on SLURM through Snakemake profiles. Two
+pixi workspaces split the launcher from the rule env.
+
+### Pipeline steps
+
+1. **indexing**: decompress the reference, index it, write chromsizes and the contig metadata.
+2. **gem_indexer** or **bwamem3_index**: build the aligner's bisulfite index.
+3. **split**: split each FASTQ pair with `seqkit split2`.
+4. **mapping** or **mapping_bwamem3**: map with `gem-mapper` or
+   `bwa-mem3 mem --meth`, clean read names and add the contig metadata with
+   gemBS's `read_filter`, and sort, as gemBS does. bwa-mem3 writes Bismark's
+   `XG` strand tag, which `bs_call` reads. With one part this writes the final
+   BAM.
+5. **merge**: with several parts, merge the sorted parts into one read group.
+6. **bam_md5**: checksum the final BAM.
+7. **bam_qc**: write the mapping QC JSON with `samtools stats` and average coverage.
+8. **get_coverage**: strand coverage with `bedtools genomecov` and `bigtools`.
+9. **contig_pools**: group the contigs into `bs_call` jobs as gemBS does, once
+   per reference. A contig of at least `calling.contig_pool_limit` bases is its
+   own job. The rest are packed into `Pool@N` jobs of about that size.
+10. **calling**: `bs_call` per pool, reading the BAM in place.
+11. **merge_chroms**: concatenate the pool BCFs in reference order with `bcftools concat`.
+12. **bcf_md5**: checksum the merged BCF.
+13. **gembs_extract**: `mextr` bedMethyl, CpG/non-CpG and bigWig outputs.
+14. **extract_signal**: methylation-level bigWigs per context and strand.
+15. **get_methylc**: combine the three contexts into one sorted, indexed methylC file.
+
+### Outputs
+
+Per sample, under `results/<run_id>/<sample>/`:
+
+| Files | Step |
+|---|---|
+| `<s>.map.json`, or `<s>.NNN.map.json` per part | gem-mapper reports, with `aligner: gem3` (`split/` FASTQs and part BAMs are temporary) |
+| `<s>.bam`, `.bam.csi`, `.bam.md5` | Final alignments |
+| `<s>.json` | Mapping QC: any gem-mapper reports, `samtools stats` and average coverage |
+| `<s>_coverage_{neg,pos}.bw` | Strand-specific coverage (the bedGraphs are temporary) |
+| `<s>_<pool>.json` | Per-pool `bs_call` reports |
+| `<s>.bcf`, `.bcf.csi`, `.bcf.md5` | Whole-genome methylation calls |
+| `<s>_{cpg,non_cpg}.txt.gz`, `<s>_{chg,chh,cpg}.bed.gz`, `<s>_{neg,pos}.bw` | `mextr` outputs |
+| `<s>_{cpg,chg,chh}_{pos,neg}.bw` | Methylation level per context and strand |
+| `<s>_methylc.bed.gz` (+ `.tbi`) | Combined CG/CHG/CHH methylC file |
+
+`results/refs/` holds:
+
+- `reference.fasta` (+ `.fai`) and `chromsizes.tsv`;
+- `reference.contig_md5`, the LN, M5, AS and SP tags per contig, as in gemBS;
+- the GEM index `reference.gem` and its `reference.info`, or the bwa-mem3
+  index `reference.fasta.*` with its seed index `reference.fasta.meth.*`;
+- `pools/`, one BED per `bs_call` job and their order in `pools.txt`.
+
+### Differences from gemBS-rs
+
+The steps from indexing to `mextr` run gemBS-rs's commands with its
+`IHEC_standard.conf` values. They differ in these ways:
+
+| gemBS-rs | Here |
+|---|---|
+| gem-mapper | gem-mapper, or bwa-mem3 for directional libraries |
+| One sample can merge several datasets | One FASTQ pair per sample, optionally split into parts |
+| bgzipped reference copy (`gemBS.ref`) | Plain FASTA copy. `bs_call` reads both the same way |
+| M5 hashes the raw sequence bytes; AS and SP come from FASTA headers | `samtools dict`: M5 of the uppercased sequence, AS and SP from the config |
+| Pool BCFs concatenated in file-name order | Concatenated in reference order |
+| `--regions-file` lists every contig for `mextr` | No regions file; `mextr` reads the same contigs |
+| `mextr --tabix` indexes the text outputs as it writes them | `tabix` indexes them afterwards |
+| `mextr` drops each contig's last base | `mextr` keeps it |
+| HTML and LaTeX QC reports, merged call JSON | ENCODE-style mapping QC JSON, coverage and per-context bigWigs, methylC |
+
+### Layout
 
 ```
 .tests/
@@ -36,7 +108,7 @@ pixi.toml                launcher env + test and lint tasks
 pyproject.toml           ruff + numpydoc config
 ```
 
-## Idioms
+### Idioms
 
 - **Outputs grouped by `run_id`** under `results/<run_id>/<sample>/`. Logs and
   benchmarks mirror it (`logs/<run_id>/`, `benchmarks/<run_id>/`). The
@@ -47,7 +119,7 @@ pyproject.toml           ruff + numpydoc config
   `dict_flags()` turn `config` into flag lists. `read_group()` builds the aligner's `@RG` line.
 - **Every rule** carries `log:`, `benchmark:`, and `software:`.
 
-## Conventions
+### Conventions
 
 Follow the [Nextstrain Snakemake style guide][style-guide] and
 [Snakemake's best-practices guide][best-practices]:
@@ -73,28 +145,49 @@ Follow the [Nextstrain Snakemake style guide][style-guide] and
 [style-guide]: https://docs.nextstrain.org/en/latest/reference/snakemake-style-guide.html
 [best-practices]: https://snakemake.readthedocs.io/en/stable/snakefiles/best_practices.html
 
-## Running
+## Getting Started
+
+### Dependencies
+
+- Linux x86-64 (the only platform in both pixi workspaces).
+- [pixi](https://pixi.sh) on `PATH`.
+- Network access to GitHub. Snakemake, its pixi and SLURM plugins, gem3-mapper
+  and gemBS-rs install from git.
+- AVX-512 CPUs for gem3-mapper.
+- A SLURM cluster for `profiles/slurm`.
+
+Most tools come from conda-forge and bioconda. Two are built from source by
+`pixi-build`:
+
+- gem3-mapper at `882b0d8` on its `gembs` branch, the commit gemBS-rs pins,
+  compiled with `-O3 -march=x86-64-v4`. It needs AVX-512 CPUs. The SLURM
+  profile requests cascadelake nodes for its two rules for this reason.
+- gemBS-rs `dev` at `baf6056` (`bs_call` 3.1.2, `mextr` 2.1.0, `read_filter`).
+  `master` last changed in 2022. None of the three is packaged on conda.
+
+bwa-mem3 comes from bioconda. It picks its SIMD kernels at run time, so it runs
+on any node. The SLURM profile sends its mapping jobs to cascadelake nodes,
+which are faster.
+
+### Installing
 
 ```bash
+git clone https://github.com/ramirc0/wgbs-smk.git
+cd wgbs-smk
+pixi install                                       # launcher env
 cp config/config.yaml.template config/config.yaml  # then edit
 cp config/samples.example.tsv config/samples.tsv   # then edit
-pixi shell                                         # launcher env
-snakemake -n -p --profile profiles/slurm           # dry run
-snakemake --profile profiles/slurm                 # SLURM
-snakemake --profile profiles/local                 # local
-pixi run test                                      # toy end-to-end tests (pytest)
 ```
 
-Run from the repository root. Local runs suit small data only.
+The launcher env (`pixi.toml` at the root) has Snakemake main, the pixi
+software-deployment plugin and the SLURM executor plugins. The rule env is a
+second pixi workspace, `workflow/envs/`. Its `pixi.lock` pins every package.
+Both workspaces exclude packages published in the last 7 days.
 
-An `onstart` hook builds the rule env before the first job. The first build
-compiles gem3-mapper and gemBS-rs. Parallel SLURM jobs would otherwise race to
-install it.
+To add a rule dependency, run `pixi add <pkg>` in `workflow/envs/`. After a
+hand edit, run `pixi lock` there (rules use `locked=True`).
 
-Tune `set-resources` in the profiles from the `benchmarks/<run_id>/` TSVs after
-a first run.
-
-### Sample sheet
+#### Sample sheet
 
 One row per sample. Lines starting with `#` are ignored.
 
@@ -106,7 +199,7 @@ Sheets from before the template port (git tag `pre-template`) name these
 columns `Barcode`, `Dataset`, `File1` and `File2`. Rename them in that order.
 The workflow stops with this hint when it finds the old names.
 
-### Configuration
+#### Configuration
 
 - `samples`, `outdir`, `run_id`, `pixi_env`: as in the template.
 - `tmpdir`: node-local scratch for `gem-indexer` and coverage temporary files.
@@ -128,7 +221,26 @@ The workflow stops with this hint when it finds the old names.
 - `extract.*`: `mextr` strand-specific bedMethyl and bigWig modes, and the
   Phred threshold.
 
-## Tests
+### Executing program
+
+```bash
+pixi shell                                  # enter the launcher env
+snakemake -n -p --profile profiles/slurm    # dry run
+snakemake --profile profiles/slurm          # SLURM
+snakemake --profile profiles/local          # local
+pixi run lint                               # ruff + numpydoc
+```
+
+Run from the repository root. Local runs suit small data only.
+
+An `onstart` hook builds the rule env before the first job. The first build
+compiles gem3-mapper and gemBS-rs. Parallel SLURM jobs would otherwise race to
+install it.
+
+Tune `set-resources` in the profiles from the `benchmarks/<run_id>/` TSVs after
+a first run.
+
+### Testing
 
 `pixi run test` runs pytest over `.tests/`. The integration tests run every
 rule, once per aligner, on scratch copies of the toy data in
@@ -155,94 +267,29 @@ Outputs go under `results/validation/`, with their own GRCh38 index.
 on chrom, start and strand, or with another run's given `--baseline-run`.
 ENCODE4 mapped R1 only, so its coverage is about half of ours.
 
-## Environment
+## Help
 
-The launcher env (`pixi.toml` at the root) has Snakemake main, the pixi
-software-deployment plugin and the SLURM executor plugins. The rule env is a
-second pixi workspace, `workflow/envs/`. Its `pixi.lock` pins every package.
-pixi MUST be on `PATH`.
+- Every rule reran. Any change to a rule env manifest, recipe, or lock reruns
+  every rule. So does moving the workdir, because the env hash includes the
+  workspace's absolute path.
+- A job failed. The profiles set `--show-failed-logs`. The full log sits under
+  `logs/<run_id>/`.
+- A SLURM node keeps failing jobs. List it under `slurm-exclude-failed-nodes`
+  in `profiles/slurm/config.yaml`.
+- `Illegal instruction` from gem-mapper. The node lacks AVX-512. Keep the
+  `cascadelake` constraint on its rules.
 
-Most tools come from conda-forge and bioconda. Two are built from source by
-`pixi-build`:
+If you have any questions or would like to provide constructive feedback, please open an issue or reach out to the MOHD DACC.
 
-- gem3-mapper at `882b0d8` on its `gembs` branch, the commit gemBS-rs pins,
-  compiled with `-O3 -march=x86-64-v4`. It needs AVX-512 CPUs. The SLURM
-  profile requests cascadelake nodes for its two rules for this reason.
-- gemBS-rs `dev` at `baf6056` (`bs_call` 3.1.2, `mextr` 2.1.0, `read_filter`).
-  `master` last changed in 2022. None of the three is packaged on conda.
+## Authors
 
-bwa-mem3 comes from bioconda. It picks its SIMD kernels at run time, so it runs
-on any node. The SLURM profile sends its mapping jobs to cascadelake nodes,
-which are faster.
+Christian Ramirez ([@ramirc0](https://github.com/ramirc0)), MOHD DACC
 
-Any change to a manifest, recipe, or lock reruns every rule.
+## License
 
-## Outputs
+This project is licensed under the MIT License. See [LICENSE](LICENSE).
 
-Per sample, under `results/<run_id>/<sample>/`:
-
-| Files | Step |
-|---|---|
-| `<s>.map.json`, or `<s>.NNN.map.json` per part | gem-mapper reports, with `aligner: gem3` (`split/` FASTQs and part BAMs are temporary) |
-| `<s>.bam`, `.bam.csi`, `.bam.md5` | Final alignments |
-| `<s>.json` | Mapping QC: any gem-mapper reports, `samtools stats` and average coverage |
-| `<s>_coverage_{neg,pos}.bw` | Strand-specific coverage (the bedGraphs are temporary) |
-| `<s>_<pool>.json` | Per-pool `bs_call` reports |
-| `<s>.bcf`, `.bcf.csi`, `.bcf.md5` | Whole-genome methylation calls |
-| `<s>_{cpg,non_cpg}.txt.gz`, `<s>_{chg,chh,cpg}.bed.gz`, `<s>_{neg,pos}.bw` | `mextr` outputs |
-| `<s>_{cpg,chg,chh}_{pos,neg}.bw` | Methylation level per context and strand |
-| `<s>_methylc.bed.gz` (+ `.tbi`) | Combined CG/CHG/CHH methylC file |
-
-`results/refs/` holds:
-
-- `reference.fasta` (+ `.fai`) and `chromsizes.tsv`;
-- `reference.contig_md5`, the LN, M5, AS and SP tags per contig, as in gemBS;
-- the GEM index `reference.gem` and its `reference.info`, or the bwa-mem3
-  index `reference.fasta.*` with its seed index `reference.fasta.meth.*`;
-- `pools/`, one BED per `bs_call` job and their order in `pools.txt`.
-
-## Pipeline steps
-
-1. **indexing**: decompress the reference, index it, write chromsizes and the contig metadata.
-2. **gem_indexer** or **bwamem3_index**: build the aligner's bisulfite index.
-3. **split**: split each FASTQ pair with `seqkit split2`.
-4. **mapping** or **mapping_bwamem3**: map with `gem-mapper` or
-   `bwa-mem3 mem --meth`, clean read names and add the contig metadata with
-   gemBS's `read_filter`, and sort, as gemBS does. bwa-mem3 writes Bismark's
-   `XG` strand tag, which `bs_call` reads. With one part this writes the final
-   BAM.
-5. **merge**: with several parts, merge the sorted parts into one read group.
-6. **bam_md5**: checksum the final BAM.
-7. **bam_qc**: write the mapping QC JSON with `samtools stats` and average coverage.
-8. **get_coverage**: strand coverage with `bedtools genomecov` and `bigtools`.
-9. **contig_pools**: group the contigs into `bs_call` jobs as gemBS does, once
-   per reference. A contig of at least `calling.contig_pool_limit` bases is its
-   own job. The rest are packed into `Pool@N` jobs of about that size.
-10. **calling**: `bs_call` per pool, reading the BAM in place.
-11. **merge_chroms**: concatenate the pool BCFs in reference order with `bcftools concat`.
-12. **bcf_md5**: checksum the merged BCF.
-13. **gembs_extract**: `mextr` bedMethyl, CpG/non-CpG and bigWig outputs.
-14. **extract_signal**: methylation-level bigWigs per context and strand.
-15. **get_methylc**: combine the three contexts into one sorted, indexed methylC file.
-
-## Differences from gemBS-rs
-
-The steps from indexing to `mextr` run gemBS-rs's commands with its
-`IHEC_standard.conf` values. They differ in these ways:
-
-| gemBS-rs | Here |
-|---|---|
-| gem-mapper | gem-mapper, or bwa-mem3 for directional libraries |
-| One sample can merge several datasets | One FASTQ pair per sample, optionally split into parts |
-| bgzipped reference copy (`gemBS.ref`) | Plain FASTA copy. `bs_call` reads both the same way |
-| M5 hashes the raw sequence bytes; AS and SP come from FASTA headers | `samtools dict`: M5 of the uppercased sequence, AS and SP from the config |
-| Pool BCFs concatenated in file-name order | Concatenated in reference order |
-| `--regions-file` lists every contig for `mextr` | No regions file; `mextr` reads the same contigs |
-| `mextr --tabix` indexes the text outputs as it writes them | `tabix` indexes them afterwards |
-| `mextr` drops each contig's last base | `mextr` keeps it |
-| HTML and LaTeX QC reports, merged call JSON | ENCODE-style mapping QC JSON, coverage and per-context bigWigs, methylC |
-
-## References
+## Acknowledgments
 
 Heath, Simon. n.d. GemBS-Rs. Github. Accessed October 10, 2026. https://github.com/heathsc/gemBS-rs.
 
@@ -251,7 +298,3 @@ Fulcrum Genomics. n.d. Bwa-Mem3. Github. Accessed October 13, 2026. https://gith
 Marco-Sola, Santiago, Michael Sammeth, Roderic Guigó, and Paolo Ribeca. 2012. “The GEM Mapper: Fast, Accurate and Versatile Alignment by Filtration.” Nature Methods 9 (12): 1185–88. https://doi.org/10.1038/nmeth.2221.
 
 Mölder, Felix, Kim Philipp Jablonski, Brice Letcher, et al. 2021. “Sustainable Data Analysis with Snakemake.” F1000Research 10 (April): 33. https://doi.org/10.12688/f1000research.29032.2.
-
-## Questions
-
-If you have any questions or would like to provide constructive feedback, please open an issue or reach out to the MOHD DACC.
