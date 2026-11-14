@@ -7,6 +7,9 @@ software-deployment-cache-prefix: ~/.cache/snakemake/software
 
 cores: 16
 printshellcmds: true
+# Job selection reruns once per timespan and stats every ready job's input on
+# NFS. At 1s, a driver with more ready jobs than slots pins a login-node core.
+max-jobs-per-timespan: 50/10s
 rerun-incomplete: true
 keep-going: true
 show-failed-logs: true
