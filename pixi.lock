@@ -40,6 +40,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/python_abi-3.14-9_cp314.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/tzdata-2026c-h151e31d_0.conda
       - pypi: git+https://github.com/cademirch/snakemake-software-deployment-plugin-pixi.git?rev=315e0f3113daefc2dfeda3a48777cd1acb2707e0#315e0f3113daefc2dfeda3a48777cd1acb2707e0
+      - pypi: git+https://github.com/snakemake/snakemake-executor-plugin-slurm.git?rev=8c2af56eb7dd1e0b78866691d6981f1d8327e0db#8c2af56eb7dd1e0b78866691d6981f1d8327e0db
       - pypi: git+https://github.com/snakemake/snakemake.git?rev=4523356973a83aa237a121717ee81dd2e09175da#4523356973a83aa237a121717ee81dd2e09175da
       - pypi: https://files.pythonhosted.org/packages/02/10/5da547df7a391dcde17f59520a231527b8571e6f46fc8efb02ccb370ab12/docutils-0.22.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/04/4b/29cac41a4d98d144bf5f6d33995617b185d14b22401f75ca86f384e87ff1/h11-0.16.0-py3-none-any.whl
@@ -87,7 +88,6 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/b0/74/bd8453e8e20296063f9f431e6f1417f1b62bae0e012821df07fb71ede6c2/configargparse-1.8.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b3/66/e6c0a808950ba5a4042e2fcedd577fc7401536c7db063de4d7c36be06f84/argparse_dataclass-2.0.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b5/70/5d8df3b09e25bce090399cf48e452d25c935ab72dad19406c77f4e828045/psutil-7.2.2-cp36-abi3-manylinux2010_x86_64.manylinux_2_12_x86_64.manylinux_2_28_x86_64.whl
-      - pypi: https://files.pythonhosted.org/packages/b6/1d/5c61f9db841498be3c933bee40debcc3e74b0b0552f2446a5920ed9592fa/snakemake_executor_plugin_slurm-2.8.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b6/49/1f72d8c05d8588f06a61f1af3deb125a4ff8169d2a41f1b839d62c824d1c/snakemake_interface_storage_plugins-4.4.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/bd/df/c9b4e25dce00f6349fd28aadba7b6c3f7431cc8bd4308a158fbe57b6a22e/connection_pool-0.0.3.tar.gz
@@ -1000,6 +1000,18 @@ packages:
   - aiofiles>=24.1.0,<25
   - httpx>=0.28.1,<0.29
   requires_python: '>=3.11,<4.0'
+- pypi: git+https://github.com/snakemake/snakemake-executor-plugin-slurm.git?rev=8c2af56eb7dd1e0b78866691d6981f1d8327e0db#8c2af56eb7dd1e0b78866691d6981f1d8327e0db
+  name: snakemake-executor-plugin-slurm
+  version: 2.8.0
+  requires_dist:
+  - snakemake-interface-common>=1.23.0,<2
+  - snakemake-interface-executor-plugins>=9.4.0,<10
+  - snakemake-executor-plugin-slurm-jobstep>=0.6.0,<1
+  - pandas>=2.3.3,<4
+  - numpy>=2.4.5,<3
+  - throttler>=1.2.2,<2
+  - pyyaml>=6.0.3,<7
+  requires_python: '>=3.11,<4'
 - pypi: git+https://github.com/snakemake/snakemake.git?rev=4523356973a83aa237a121717ee81dd2e09175da#4523356973a83aa237a121717ee81dd2e09175da
   name: snakemake
   version: 9.27.0
@@ -1543,19 +1555,6 @@ packages:
   - wheel ; implementation_name != 'pypy' and os_name == 'nt' and extra == 'test'
   - wmi ; implementation_name != 'pypy' and os_name == 'nt' and extra == 'test'
   requires_python: '>=3.6'
-- pypi: https://files.pythonhosted.org/packages/b6/1d/5c61f9db841498be3c933bee40debcc3e74b0b0552f2446a5920ed9592fa/snakemake_executor_plugin_slurm-2.8.0-py3-none-any.whl
-  name: snakemake-executor-plugin-slurm
-  version: 2.8.0
-  sha256: 9b7fdb89261cee00a499d592f408d985ff64ae89916ece768d0506eb848ab58c
-  requires_dist:
-  - numpy>=2.4.5,<3
-  - pandas>=2.3.3,<4
-  - pyyaml>=6.0.3,<7
-  - snakemake-executor-plugin-slurm-jobstep>=0.6.0,<1
-  - snakemake-interface-common>=1.23.0,<2
-  - snakemake-interface-executor-plugins>=9.4.0,<10
-  - throttler>=1.2.2,<2
-  requires_python: '>=3.11,<4'
 - pypi: https://files.pythonhosted.org/packages/b6/49/1f72d8c05d8588f06a61f1af3deb125a4ff8169d2a41f1b839d62c824d1c/snakemake_interface_storage_plugins-4.4.1-py3-none-any.whl
   name: snakemake-interface-storage-plugins
   version: 4.4.1
