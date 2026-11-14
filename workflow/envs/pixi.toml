@@ -2,6 +2,7 @@
 name = "wgbs-smk-envs"
 channels = ["conda-forge", "bioconda"]
 platforms = ["linux-64"]
+exclude-newer = "7d"
 preview = ["pixi-build"]
 
 [dependencies]
@@ -25,3 +26,12 @@ pytest = "*"
 
 [environments]
 test = { features = ["test"] }
+
+[exclude-newer]
+ca-certificates = "0d"
+certifi = "0d"
+pip = "0d"
+
+[pypi-exclude-newer]
+certifi = "0d"
+pip = "0d"

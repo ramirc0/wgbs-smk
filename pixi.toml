@@ -4,6 +4,7 @@
 name = "wgbs-smk"
 channels = ["conda-forge"]
 platforms = ["linux-64"]
+exclude-newer = "7d"
 
 [dependencies]
 python = "3.14.*"
@@ -28,3 +29,12 @@ lint = "ruff check && ruff format --check && numpydoc lint workflow/scripts/*.py
 
 [environments]
 lint = { features = ["lint"], no-default-feature = true }
+
+[exclude-newer]
+ca-certificates = "0d"
+certifi = "0d"
+pip = "0d"
+
+[pypi-exclude-newer]
+certifi = "0d"
+pip = "0d"
