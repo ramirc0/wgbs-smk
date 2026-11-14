@@ -15,9 +15,11 @@ source:
   # dropping each contig's last base.
   patches:
     - mextr-region-ends.patch
+    # r_htslib copies htslib's private region_t, which 1.25 extended.
+    - r_htslib-region-t.patch
 
 build:
-  number: 1
+  number: 2
   script:
     - cd rust
     # The upstream Makefile generates this manifest. Cargo needs it to load the workspace.
@@ -34,7 +36,8 @@ requirements:
     - ${{ compiler('c') }}
     - ${{ compiler('rust') }}
   host:
-    - htslib
+    # r_htslib-region-t.patch matches this minor version's region_t.
+    - htslib 1.25.*
     - zlib
 
 about:

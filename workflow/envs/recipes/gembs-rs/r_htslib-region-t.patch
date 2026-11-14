@@ -1,0 +1,13 @@
+--- a/rust/r_htslib/src/synced_bcf_reader.rs
++++ b/rust/r_htslib/src/synced_bcf_reader.rs
+@@ -56,6 +56,10 @@
+ 	nregs: c_int,
+ 	mregs: c_int,
+ 	creg: c_int,
++	from_itr: c_int,
++	multi_end: c_int,
++	multi_running: c_int,
++	multi_curr: *mut c_int,
+ }
+ 
+ impl bcf_sr_region_t {
