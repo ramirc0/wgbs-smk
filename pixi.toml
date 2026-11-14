@@ -12,7 +12,7 @@ python = "3.14.*"
 immutables = "*"
 
 [pypi-dependencies]
-snakemake = { git = "https://github.com/snakemake/snakemake.git", rev = "4523356973a83aa237a121717ee81dd2e09175da" }
+snakemake = { git = "https://github.com/snakemake/snakemake.git", rev = "9e1f43d89a5cb21c5dc7da251e15d91fe5b8f300" }
 snakemake-software-deployment-plugin-pixi = { git = "https://github.com/cademirch/snakemake-software-deployment-plugin-pixi.git", rev = "315e0f3113daefc2dfeda3a48777cd1acb2707e0" }
 snakemake-executor-plugin-slurm = { git = "https://github.com/snakemake/snakemake-executor-plugin-slurm.git", rev = "8c2af56eb7dd1e0b78866691d6981f1d8327e0db" }
 snakemake-executor-plugin-slurm-jobstep = "==0.6.1"
