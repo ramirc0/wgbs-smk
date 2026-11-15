@@ -35,7 +35,7 @@ _SHEET = Path(config["samples"])
 if not _SHEET.exists():
     raise WorkflowError(
         f"Sample sheet not found: {_SHEET}\n"
-        "Columns: sample_id, dataset, fastq_1, fastq_2; see config/samples.example.tsv."
+        "Columns: sample_id, dataset, fastq_1, fastq_2; see config/samples.tsv.template."
     )
 
 with _SHEET.open(newline="") as f:

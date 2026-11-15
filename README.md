@@ -87,8 +87,9 @@ The steps from indexing to `mextr` run gemBS-rs's commands with its
   unit/                  script unit tests, run by `pixi run test`
   validation/            four ENCODE replicates on GRCh38, compared with ENCODE4's calls
 config/
-  config.yaml.template   parameters + paths; copy to config.yaml (gitignored)
-  samples.example.tsv    one row per sample: sample_id, dataset, fastq_1, fastq_2
+  config.yaml.template   parameters + paths; copy to <run_id>/config.yaml
+  samples.tsv.template   one row per sample: sample_id, dataset, fastq_1, fastq_2
+  <run_id>/              one run's config.yaml and samples.tsv (gitignored)
 workflow/
   Snakefile              includes the rules + rule all
   rules/
@@ -174,9 +175,10 @@ which are faster.
 ```bash
 git clone https://github.com/ramirc0/wgbs-smk.git
 cd wgbs-smk
-pixi install                                       # launcher env
-cp config/config.yaml.template config/config.yaml  # then edit
-cp config/samples.example.tsv config/samples.tsv   # then edit
+pixi install                                                # launcher env
+mkdir -p config/<run_id>
+cp config/config.yaml.template config/<run_id>/config.yaml  # then edit
+cp config/samples.tsv.template config/<run_id>/samples.tsv  # then edit
 ```
 
 The launcher env (`pixi.toml` at the root) has Snakemake main, the pixi
@@ -223,13 +225,18 @@ The workflow stops with this hint when it finds the old names.
 
 ### Executing program
 
+Each run keeps its config and sample sheet in `config/<run_id>/`. A `run_id`
+is the start date and a slug that names the data, such as
+`2026-11-15-mohd-wgbs`. Set `run_id` and `samples` in the config to match.
+
 ```bash
-pixi shell                                     # enter the launcher env
-snakemake -n -p --profile profiles/slurm       # dry run
-snakemake --profile profiles/local             # local
-pixi run slurm 2026-11-15-encode-wgbs          # SLURM
-pixi run slurm 2026-11-15-encode-wgbs "all -n" # targets and flags in one quoted arg
-pixi run lint                                  # ruff + numpydoc
+C=config/2026-11-15-mohd-wgbs/config.yaml
+pixi shell                                                   # enter the launcher env
+snakemake -n -p --profile profiles/slurm --configfile $C     # dry run
+snakemake --profile profiles/local --configfile $C           # local
+pixi run slurm 2026-11-15-mohd-wgbs "--configfile $C"        # SLURM
+pixi run slurm 2026-11-15-mohd-wgbs "all -n --configfile $C" # targets and flags in one quoted arg
+pixi run lint                                                # ruff + numpydoc
 ```
 
 `pixi run slurm <run_id>` sets `run_id` and names every SLURM job
