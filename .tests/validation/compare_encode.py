@@ -34,8 +34,8 @@ def build_parser():
     p = argparse.ArgumentParser(description="Compare CpG calls with ENCODE's.")
     p.add_argument(
         "--run",
-        default="results/validation/encode-validation",
-        help="Run directory.",
+        required=True,
+        help="Run directory, results/validation/<run_id>.",
     )
     p.add_argument(
         "--baseline-run",

@@ -269,12 +269,14 @@ each of K562 (ENCSR765JPC) and GM12878 (ENCSR890UQO). Its inputs live on the
 Weng Lab cluster, so it runs only there.
 
 ```bash
-snakemake --profile profiles/slurm --configfile .tests/validation/config.yaml
+R=2026-11-15-encode-validation
+pixi run slurm $R "--configfile .tests/validation/config.yaml"
 srun -p 4hours -c 8 --mem=200G -t 60 \
-    pixi run --manifest-path workflow/envs/pixi.toml python .tests/validation/compare_encode.py
+    pixi run --manifest-path workflow/envs/pixi.toml \
+    python .tests/validation/compare_encode.py --run results/validation/$R
 ```
 
-Outputs go under `results/validation/`, with their own GRCh38 index.
+Outputs go under `results/validation/<run_id>/`, with their own GRCh38 index.
 `compare_encode.py` joins each replicate's CpG bedMethyl with ENCODE4 v1.1.6's
 on chrom, start and strand, or with another run's given `--baseline-run`.
 ENCODE4 mapped R1 only, so its coverage is about half of ours.
