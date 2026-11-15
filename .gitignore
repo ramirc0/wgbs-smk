@@ -5,6 +5,7 @@ config/*
 !config/*.template
 .snakemake
 scratch
+.tmp
 .conda
 /resources
 benchmarks
