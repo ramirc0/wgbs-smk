@@ -334,6 +334,18 @@ def test_qc_json_matches_one_samtools_stats_pass(run):
     assert report["samtools_stats"] == expected
 
 
+def test_qc_json_counts_mapped_reads_per_contig(run):
+    """Check that the QC JSON counts each contig's primary mapped reads."""
+    align = run / PREFIX / "S001/align"
+    bam = align / "S001.bam"
+    contigs = [f[1][3:] for f in header(bam, "@SQ")]
+    expected = {
+        c: int(tool("samtools", "view", "-c", "-F", "0x904", bam, c)) for c in contigs
+    }
+    report = json.loads((align / "S001_qc.json").read_text())
+    assert report["contig_reads_mapped"] == expected
+
+
 def test_methylc_holds_every_site_once_in_order(run):
     """Check that the methylC file merges the three bedMethyl files, sorted."""
     sample = run / PREFIX / "S001"

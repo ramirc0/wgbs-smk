@@ -1,4 +1,6 @@
-"""Write the mapping QC JSON: the gem-mapper reports, samtools stats and average coverage.
+"""Write the mapping QC JSON: gem-mapper reports, samtools stats and coverage.
+
+It also counts the mapped reads per contig, for the report's sex check.
 
 Coverage = (mapped reads * average read length) / genome size. The genome size is
 the sum of the chromosome sizes. Adapted from
@@ -227,6 +229,24 @@ def insert_sizes(rows):
     }
 
 
+def reads_mapped(output):
+    """Read the primary mapped reads from samtools stats output.
+
+    Parameters
+    ----------
+    output : str
+        Output of samtools stats.
+
+    Returns
+    -------
+    int
+        The ``reads mapped`` summary number.
+    """
+    return next(
+        int(row[1]) for row in sections(output)["SN"] if row[0] == "reads mapped:"
+    )
+
+
 def merge_stats(outputs, different_chr):
     """Rebuild the whole-BAM summary numbers from per-region samtools stats.
 
@@ -286,8 +306,10 @@ def samtools_stats(bam, chromsizes, threads):
 
     Returns
     -------
-    dict of str to int or float or str
+    stats : dict of str to int or float or str
         One entry per ``SN`` line of a whole-BAM samtools stats run.
+    contig_reads : dict of str to int
+        Primary mapped reads per contig, samtools stats' ``reads mapped``.
     """
     with open(chromsizes) as f:
         sizes = [line.split()[:2] for line in f]
@@ -296,7 +318,11 @@ def samtools_stats(bam, chromsizes, threads):
     with ThreadPoolExecutor(threads) as pool:
         results = list(pool.map(lambda region: region_stats(bam, region), regions))
     merged = merge_stats([r[0] for r in results], sum(r[1] for r in results))
-    return {name: numeric(value) for name, value in merged.items()}
+    mapped = {
+        region: reads_mapped(r[0]) for region, r in zip(regions, results, strict=True)
+    }
+    contig_reads = {name: mapped[name] for name, _ in sizes}
+    return {name: numeric(value) for name, value in merged.items()}, contig_reads
 
 
 def genome_size(chromsizes):
@@ -356,13 +382,14 @@ def main(argv=None):
     for path in args.gem_mapper_jsons:
         with open(path) as f:
             report[path] = json.load(f)
-    stats = samtools_stats(args.bamfile, args.chromsizes, args.threads)
+    stats, contig_reads = samtools_stats(args.bamfile, args.chromsizes, args.threads)
     coverage = (
         stats["reads mapped"] * stats["average length"] / genome_size(args.chromsizes)
     )
     # qc_utils sorted the metrics and their fields by name.
     report["average_coverage"] = {"average_coverage": coverage}
     report["samtools_stats"] = dict(sorted(stats.items()))
+    report["contig_reads_mapped"] = contig_reads
     with open(args.output, "w") as f:
         json.dump(report, f, indent=4)
 
