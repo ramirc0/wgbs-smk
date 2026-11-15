@@ -37,6 +37,8 @@ pixi workspaces split the launcher from the rule env.
 13. **gembs_extract**: `mextr` bedMethyl, CpG/non-CpG and bigWig outputs.
 14. **extract_signal**: methylation-level bigWigs per context and strand.
 15. **get_methylc**: combine the three contexts into one sorted, indexed methylC file.
+16. **gather_qc**, **qc_figures**, **qc_report**: collect every sample's QC into one
+    table, draw each sample's figures, and render the run's QC report.
 
 ### Outputs
 
@@ -53,6 +55,14 @@ deleted once used. `<s>` is the sample ID.
 | `extract/` | `mextr` outputs: `<s>_{cpg,non_cpg}.txt.gz`, `<s>_{chg,chh,cpg}.bed.gz` (+ `.tbi`), `<s>_{chg,chh,cpg}.bb`, `<s>_{neg,pos}.bw`, each with an `.md5` |
 | `signals/` | `<s>_coverage_{neg,pos}.bw`, strand coverage; `<s>_{cpg,chg,chh}_{neg,pos}.bw`, methylation level per context and strand |
 | `methylc/` | `<s>_methylc.bed.gz` (+ `.tbi`), the CG, CHG and CHH sites in one file |
+
+The run's QC report goes to `<outdir>/<run_id>/report/`: `qc_report.html`,
+`qc_metrics.tsv` and `samples/`, which holds each sample's figures. Keep
+`samples/` beside the HTML. The report grades each sample on ENCODE's WGBS
+portal audits: coverage, conversion, and read length. It marks cohort outliers
+and shows each sample's chrX and chrY depth for a sex check. The workflow maps
+no lambda spike-in, so it reads conversion at the genome's non-CpG sites.
+`workflow/report/qc.yaml` lists the metrics and audits.
 
 `results/refs/` holds:
 
@@ -98,10 +108,13 @@ workflow/
     mapping.smk          split, map, merge, mapping QC, strand coverage
     call.smk             contig pools, per-pool bs_call, merged BCF
     extract.smk          mextr, strand bigWigs, methylC
+    report.smk           QC table, figures and report
+  report/qc.yaml         QC report spec: metrics and ENCODE audits
   scripts/               argparse scripts, each with build_parser() + main()
   envs/
     pixi.toml            rule env (pixi workspace)
     recipes/             gem3-mapper and gemBS-rs, built from source
+    report/pixi.toml     QC report env, qc-report
 profiles/
   local/config.yaml      local execution
   slurm/config.yaml      SLURM (per-rule resources, retried with more memory)
@@ -246,9 +259,10 @@ The SLURM plugin keeps the UUID suffix. It finds its jobs by that shared name.
 
 Run from the repository root. Local runs suit small data only.
 
-An `onstart` hook builds the rule env before the first job. The first build
-compiles gem3-mapper and gemBS-rs. Parallel SLURM jobs would otherwise race to
-install it.
+An `onstart` hook builds the rule and report envs before the first job. The
+first build compiles gem3-mapper and gemBS-rs. Parallel SLURM jobs would
+otherwise race to install them. The report env is its own workspace, so a
+qc-report update reruns only the report.
 
 Tune `set-resources` in the profiles from the `benchmarks/<run_id>/` TSVs after
 a first run.

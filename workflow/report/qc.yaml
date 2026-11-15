@@ -1,0 +1,157 @@
+# The run's QC report: metrics from gather_qc.py, audits from ENCODE's portal.
+# Each audit copies the flag, level and operators of
+# ~/Projects/encode-data-standards/dna-methylation/wgbs/portal-audits.md, ENCODE4
+# gemBS pipeline. The replicate concordance audit does not apply: every sample
+# is one library.
+title: WGBS QC
+theme: zed
+standards:
+  name: ENCODE4 WGBS audits
+  url: https://www.encodeproject.org/data-standards/wgbs-encode4/
+  source: >-
+    encode-data-standards dna-methylation/wgbs/portal-audits.md (17e3384),
+    from ENCODE-DCC/encoded 9bd8ff1, audit/analysis.py:check_analysis_wgbs_encode4_standards
+    and audit/experiment.py:check_wgbs_read_lengths
+
+groups:
+  - name: Reads
+    metrics:
+      - id: read_pairs
+        label: Read pairs
+        format: count
+        outlier: low
+        scale: log
+        table: true
+        description: Read pairs in the BAM, from samtools stats.
+      - id: read_length
+        label: Read length
+        digits: 0
+        description: Longest read in the BAM, from samtools stats.
+  - name: Alignment
+    metrics:
+      - id: mapped_pct
+        label: Mapped
+        format: percent
+        digits: 1
+        outlier: low
+        table: true
+        description: Reads with an alignment, from samtools stats.
+      - id: properly_paired_pct
+        label: Properly paired
+        format: percent
+        digits: 1
+        outlier: low
+        description: Reads aligned as a proper pair, from samtools stats.
+      - id: mq0_pct
+        label: MAPQ 0
+        format: percent
+        digits: 1
+        outlier: high
+        description: Mapped reads at MAPQ 0, which bs_call ignores.
+      - id: error_rate_pct
+        label: Error rate
+        format: percent
+        digits: 2
+        outlier: high
+        description: >-
+          Mismatches per aligned base, from samtools stats. Bisulfite
+          conversions do not count, since the aligner scores them as matches.
+      - id: insert_size
+        label: Insert size
+        digits: 0
+        outlier: both
+        description: Mean insert size over the main bulk, from samtools stats.
+  - name: Coverage
+    metrics:
+      - id: average_coverage
+        label: Coverage
+        digits: 1
+        outlier: low
+        table: true
+        headline: true
+        description: >-
+          Mapped reads times mean read length over the genome size, as ENCODE's
+          gemBS pipeline computes average_coverage.
+      - id: cpgs_10x
+        label: CpGs at 10X
+        format: count
+        outlier: low
+        scale: log
+        table: true
+        description: >-
+          Reference CpG positions with at least 10 reads, from bs_call. It counts
+          a CpG's C and G apart, so a genome has about twice as many as CpGs.
+      - id: passed_cpgs
+        label: Passed CpGs
+        format: count
+        outlier: low
+        scale: log
+        description: Reference CpG positions that pass bs_call's filters, C and G apart.
+  - name: Methylation
+    metrics:
+      - id: conversion_pct
+        label: Conversion
+        format: percent
+        digits: 2
+        outlier: low
+        table: true
+        headline: true
+        description: >-
+          C to T conversion at non-CpG sites: converted Cs over all Cs that
+          bs_call reads there on the converted strand. Unconverted Cs and
+          non-CpG methylation both lower it.
+      - id: cpg_methylation_pct
+        label: CpG methylation
+        format: percent
+        digits: 1
+        outlier: both
+        table: true
+        description: Mean methylation of the CpGs that pass bs_call's filters.
+  - name: Sex chromosomes
+    metrics:
+      - id: chrx_ratio
+        label: chrX depth
+        digits: 2
+        table: true
+        description: >-
+          Mapped reads per base on chrX over those on the autosomes. About 1 for
+          XX and 0.5 for XY.
+      - id: chry_ratio
+        label: chrY depth
+        digits: 2
+        table: true
+        description: >-
+          Mapped reads per base on chrY over those on the autosomes. Near 0 for
+          XX. For XY it stays under 0.5, because much of chrY maps poorly.
+
+audits:
+  - flag: extremely low coverage
+    level: ERROR
+    when: average_coverage < 5
+    source: analysis.py:check_analysis_wgbs_encode4_standards:1764-1775
+  - flag: insufficient coverage
+    level: NOT_COMPLIANT
+    when: average_coverage >= 5 AND average_coverage < 25
+    source: analysis.py:check_analysis_wgbs_encode4_standards:1774-1777
+  - flag: low coverage
+    level: WARNING
+    when: average_coverage >= 25 AND average_coverage < 30
+    source: analysis.py:check_analysis_wgbs_encode4_standards:1774-1779
+  - flag: low lambda C conversion rate
+    level: WARNING
+    when: conversion_pct < 98
+    source: >-
+      analysis.py:check_analysis_wgbs_encode4_standards:1789-1798, conversion_rate
+      < 0.98. The portal reads the conversion of the lambda phage spike-in. This
+      workflow maps no spike-in, so this reads the conversion at non-CpG sites of
+      the genome. The portal's missing conversion rate ERROR is left out.
+  - flag: insufficient read length
+    level: NOT_COMPLIANT
+    when: read_length < 100
+    source: >-
+      experiment.py:check_wgbs_read_lengths:794-817. The portal reads the FASTQ's
+      read_length. This reads the longest read in the BAM.
+
+links:
+  - label: Mapping QC
+    path: "{sample}/align/{sample}_qc.json"

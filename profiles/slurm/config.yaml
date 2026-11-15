@@ -45,6 +45,9 @@ set-threads:
   gembs_extract: 32
   extract_signal: 8
   get_methylc: 8
+  gather_qc: 8
+  qc_figures: 8
+  qc_report: 1
 
 # From the 2026-10-10 ENCODE run (benchmarks/encode-validation/). Peaks, largest
 # sample: gem_indexer 57 GB, mapping 34 GB at 26 threads, calling 1.2 GB,
@@ -126,6 +129,18 @@ set-resources:
     slurm_partition: 4hours
     mem_mb: 200000 * attempt
     runtime: 240m
+  gather_qc:
+    slurm_partition: 4hours
+    mem_mb: 16000 * attempt
+    runtime: 120m
+  qc_figures:
+    slurm_partition: 4hours
+    mem_mb: 16000 * attempt
+    runtime: 120m
+  qc_report:
+    slurm_partition: 4hours
+    mem_mb: 16000 * attempt
+    runtime: 60m
 
 rerun-incomplete: true
 keep-going: true

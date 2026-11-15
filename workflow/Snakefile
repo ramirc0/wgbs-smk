@@ -4,10 +4,12 @@ include: "rules/indexing.smk"
 include: "rules/mapping.smk"
 include: "rules/call.smk"
 include: "rules/extract.smk"
+include: "rules/report.smk"
 
 
 rule all:
     input:
+        f"{OUTDIR}/report/qc_report.html",
         [f"{prefix(s, 'signals')}_coverage_{strand}.bw" for s in SAMPLES for strand in ("neg", "pos")],
         [
             f"{prefix(s, 'signals')}_{context}_{strand}.bw"

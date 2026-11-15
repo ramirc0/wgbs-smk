@@ -6,6 +6,7 @@ import json
 import subprocess
 import sys
 
+import polars as pl
 import pyBigWig
 import pytest
 from conftest import FIXTURE, PREFIX, ROOT, run_ok, snakemake, tool, workdir
@@ -385,3 +386,22 @@ def test_methylation_matches_the_simulated_levels(run):
 def test_every_sample_finishes(run, name):
     """Check that each sample gets its methylC file."""
     assert (run / PREFIX / name / f"methylc/{name}_methylc.bed.gz").stat().st_size > 0
+
+
+def test_report_grades_every_sample(run):
+    """Check that the QC table holds each sample's numbers and the page renders."""
+    report = run / PREFIX / "report"
+    metrics = pl.read_csv(report / "qc_metrics.tsv", separator="\t")
+    assert metrics["sample_id"].to_list() == ["S001", "S002"]
+    row = metrics.row(0, named=True)
+    qc = json.loads((run / PREFIX / "S001/align/S001_qc.json").read_text())
+    assert row["average_coverage"] == pytest.approx(
+        qc["average_coverage"]["average_coverage"]
+    )
+    assert row["read_pairs"] * 2 == qc["samtools_stats"]["raw total sequences"]
+    assert row["conversion_pct"] > 99
+    assert abs(row["cpg_methylation_pct"] - 80) < 5
+    assert row["chrx_ratio"] > 0.5
+    for sample in ("S001", "S002"):
+        assert (report / f"samples/{sample}.js").stat().st_size > 0
+    assert "S002" in (report / "qc_report.html").read_text()

@@ -65,6 +65,18 @@ rule calling:
         """
 
 
+def pool_names():
+    """Return the contig pools in reference order, once contig_pools has run.
+
+    Returns
+    -------
+    list of str
+        Pool names, as in `pools.txt`.
+    """
+    pools = Path(checkpoints.contig_pools.get().output.pools, "pools.txt")
+    return pools.read_text().split()
+
+
 def pool_bcfs(wildcards):
     """Return a sample's per-pool BCFs in reference order.
 
@@ -78,8 +90,7 @@ def pool_bcfs(wildcards):
     list of str
         One BCF per pool, in the order of `pools.txt`.
     """
-    pools = Path(checkpoints.contig_pools.get().output.pools, "pools.txt")
-    return [f"{prefix(wildcards.sample, 'call')}_{pool}.bcf" for pool in pools.read_text().split()]
+    return [f"{prefix(wildcards.sample, 'call')}_{pool}.bcf" for pool in pool_names()]
 
 
 rule merge_chroms:

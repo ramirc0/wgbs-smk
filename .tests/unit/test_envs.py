@@ -5,10 +5,14 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
-ENVS = [ROOT / ".pixi/envs/default", ROOT / "workflow/envs/.pixi/envs/default"]
+ENVS = [
+    ROOT / ".pixi/envs/default",
+    ROOT / "workflow/envs/.pixi/envs/default",
+    ROOT / "workflow/envs/report/.pixi/envs/default",
+]
 
 
-@pytest.mark.parametrize("env", ENVS, ids=["launcher", "rule"])
+@pytest.mark.parametrize("env", ENVS, ids=["launcher", "rule", "report"])
 def test_no_wheel_was_built_on_this_host(env):
     """Check that every compiled PyPI package came as a portable wheel.
 

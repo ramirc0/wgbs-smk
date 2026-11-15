@@ -37,3 +37,6 @@ set-threads:                # capped at --cores
   gembs_extract: 16
   extract_signal: 8
   get_methylc: 8
+  gather_qc: 8
+  qc_figures: 8
+  qc_report: 1
