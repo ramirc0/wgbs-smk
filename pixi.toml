@@ -20,6 +20,11 @@ snakemake-executor-plugin-slurm-jobstep = "==0.6.1"
 [tasks]
 test = "pixi run --manifest-path workflow/envs/pixi.toml --environment test pytest .tests"
 
+# Targets must precede --config, so they ride in the second argument, not after `--`.
+[tasks.slurm]
+args = ["run_id", { arg = "snakemake_args", default = "" }]
+cmd = "snakemake {{ snakemake_args }} --profile profiles/slurm --slurm-jobname-prefix {{ run_id }} --config run_id={{ run_id }}"
+
 [feature.lint.dependencies]
 ruff = ">=0.17,<0.18"
 numpydoc = ">=1.11.0,<2"

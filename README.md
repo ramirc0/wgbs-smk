@@ -224,12 +224,17 @@ The workflow stops with this hint when it finds the old names.
 ### Executing program
 
 ```bash
-pixi shell                                  # enter the launcher env
-snakemake -n -p --profile profiles/slurm    # dry run
-snakemake --profile profiles/slurm          # SLURM
-snakemake --profile profiles/local          # local
-pixi run lint                               # ruff + numpydoc
+pixi shell                                     # enter the launcher env
+snakemake -n -p --profile profiles/slurm       # dry run
+snakemake --profile profiles/local             # local
+pixi run slurm 2026-11-15-encode-wgbs          # SLURM
+pixi run slurm 2026-11-15-encode-wgbs "all -n" # targets and flags in one quoted arg
+pixi run lint                                  # ruff + numpydoc
 ```
+
+`pixi run slurm <run_id>` sets `run_id` and names every SLURM job
+`<run_id>_<uuid>`, so `squeue` and `sacct` show which run a job belongs to.
+The SLURM plugin keeps the UUID suffix. It finds its jobs by that shared name.
 
 Run from the repository root. Local runs suit small data only.
 
