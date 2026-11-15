@@ -50,6 +50,27 @@ def build_parser():
     return p
 
 
+def cpg_bed(run, sample):
+    """Return the path of a sample's CpG bedMethyl in a run.
+
+    Parameters
+    ----------
+    run : pathlib.Path or str
+        Run directory, `<outdir>/<run_id>`.
+    sample : str
+        Sample ID.
+
+    Returns
+    -------
+    pathlib.Path
+        `<sample>/extract/<sample>_cpg.bed.gz`, or `<sample>/<sample>_cpg.bed.gz`
+        for runs from before the step directories, such as the v3 and v4
+        validation runs.
+    """
+    step = Path(run, sample, "extract", f"{sample}_cpg.bed.gz")
+    return step if step.exists() else Path(run, sample, f"{sample}_cpg.bed.gz")
+
+
 def read_cpg(path):
     """Read a bedMethyl CpG file.
 
@@ -127,10 +148,10 @@ def main():
     args = build_parser().parse_args()
     rows = []
     for sample, encode_file in ENCODE_CPG.items():
-        ours = Path(args.run) / sample / f"{sample}_cpg.bed.gz"
+        ours = cpg_bed(args.run, sample)
         theirs = ENCODE_DATA / encode_file
         if args.baseline_run:
-            theirs = Path(args.baseline_run) / sample / f"{sample}_cpg.bed.gz"
+            theirs = cpg_bed(args.baseline_run, sample)
         if not ours.exists():
             print(f"{sample}: no {ours}, skipped")
             continue

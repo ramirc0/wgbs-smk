@@ -60,20 +60,22 @@ wildcard_constraints:
     pool=r"[^/]+",
 
 
-def prefix(sample):
-    """Return the output prefix of a sample.
+def prefix(sample, step):
+    """Return the output prefix of a sample's step.
 
     Parameters
     ----------
     sample : str
         Sample ID from the sheet.
+    step : str
+        Step directory, such as `align` or `signals`.
 
     Returns
     -------
     str
-        Path `<outdir>/<run_id>/<sample>/<sample>`.
+        Path `<outdir>/<run_id>/<sample>/<step>/<sample>`.
     """
-    return f"{OUTDIR}/{sample}/{sample}"
+    return f"{OUTDIR}/{sample}/{step}/{sample}"
 
 
 def read_group(sample):

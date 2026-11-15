@@ -63,7 +63,7 @@ def header(bam, kind):
 
 def test_one_read_group_per_dataset(run):
     """Check that merging the FASTQ parts keeps a single read group per dataset."""
-    bam = run / PREFIX / "S001/S001.bam"
+    bam = run / PREFIX / "S001/align/S001.bam"
     assert [f[1] for f in header(bam, "@RG")] == ["ID:EXP1_rep1"]
     tags = tool("samtools", "view", bam).splitlines()
     assert {f for line in tags for f in line.split("\t") if f.startswith("RG:Z:")} == {
@@ -74,7 +74,7 @@ def test_one_read_group_per_dataset(run):
 def test_sq_lines_carry_md5_assembly_and_species(run):
     """Check that read_filter adds M5, AS and SP to the BAM's @SQ lines, as gemBS does."""
     contigs = fasta_contigs(FIXTURE / "resources/genome.fa.gz")
-    sq = {f[1][3:]: f[2:] for f in header(run / PREFIX / "S001/S001.bam", "@SQ")}
+    sq = {f[1][3:]: f[2:] for f in header(run / PREFIX / "S001/align/S001.bam", "@SQ")}
     assert sq.keys() == contigs.keys()
     for name, tags in sq.items():
         md5 = hashlib.md5(contigs[name].upper().encode()).hexdigest()
@@ -99,7 +99,9 @@ def test_md5_sidecars_verify(run):
 
 def test_merged_bcf_follows_reference_order(run):
     """Check that the merged BCF lists contigs in reference order, whatever the locale."""
-    body = tool("bcftools", "view", "-H", run / PREFIX / "S001/S001.bcf").splitlines()
+    body = tool(
+        "bcftools", "view", "-H", run / PREFIX / "S001/call/S001.bcf"
+    ).splitlines()
     seen = list(dict.fromkeys(line.split("\t", 1)[0] for line in body))
     order = list(fasta_contigs(FIXTURE / "resources/genome.fa.gz"))
     assert seen == [c for c in order if c in seen]
@@ -126,6 +128,21 @@ def test_untracked_files(run):
     assert untracked == []
 
 
+def test_sample_outputs_sit_in_step_dirs(run):
+    """Check that each sample directory holds only its step directories."""
+    for sample in ("S001", "S002"):
+        entries = list((run / PREFIX / sample).iterdir())
+        assert all(e.is_dir() for e in entries), entries
+        assert {e.name for e in entries} == {
+            "split",
+            "align",
+            "call",
+            "extract",
+            "signals",
+            "methylc",
+        }
+
+
 def test_tmpdir_is_empty_after_the_run(run):
     """Check that no job leaves files or directories in tmpdir."""
     assert list((run / "scratch").rglob("*")) == []
@@ -136,9 +153,9 @@ def test_intermediates_are_removed(run):
     sample = run / PREFIX / "S001"
     leftovers = [
         *sample.glob("split/*.fastq.gz"),
-        *sample.glob("S001.[0-9]*.bam"),
-        *sample.glob("*.bg"),
-        *sample.glob("*.sort"),
+        *sample.glob("align/S001.[0-9]*.bam"),
+        *sample.rglob("*.bg"),
+        *sample.rglob("*.sort"),
     ]
     assert leftovers == []
 
@@ -156,11 +173,11 @@ def test_fastq_split_one_maps_the_pair_whole(tmp_path, run, aligner):
             ("aligner: gem3 ", f"aligner: {aligner} "),
         ],
     )
-    run_ok(path, "--notemp", f"{PREFIX}/S001/S001.bam")
+    run_ok(path, "--notemp", f"{PREFIX}/S001/align/S001.bam")
     assert not (path / PREFIX / "S001/split").exists()
-    assert not list((path / PREFIX / "S001").glob("S001.0*.bam"))
+    assert not list((path / PREFIX / "S001/align").glob("S001.0*.bam"))
     count = [
-        tool("samtools", "view", "-c", p / PREFIX / "S001/S001.bam")
+        tool("samtools", "view", "-c", p / PREFIX / "S001/align/S001.bam")
         for p in (path, run)
     ]
     assert count[0] == count[1]
@@ -175,16 +192,16 @@ def test_sort_spills_beside_the_bam(tmp_path, aligner):
     the planned command.
     """
     path = workdir(tmp_path, [("aligner: gem3 ", f"aligner: {aligner} ")])
-    done = snakemake(path, "-n", "-p", f"{PREFIX}/S001/S001.001.bam")
+    done = snakemake(path, "-n", "-p", f"{PREFIX}/S001/align/S001.001.bam")
     assert done.returncode == 0, done.stderr[-5000:]
-    assert f"-T {PREFIX}/S001/S001.001.sort/" in done.stdout
+    assert f"-T {PREFIX}/S001/align/S001.001.sort/" in done.stdout
 
 
 def test_fastq_split_into_three_parts(tmp_path):
     """Check that fastq_split other than 2 maps every part."""
     path = workdir(tmp_path, [("fastq_split: 2 ", "fastq_split: 3 ")])
-    run_ok(path, f"{PREFIX}/S001/S001.bam")
-    assert header(path / PREFIX / "S001/S001.bam", "@RG")
+    run_ok(path, f"{PREFIX}/S001/align/S001.bam")
+    assert header(path / PREFIX / "S001/align/S001.bam", "@RG")
 
 
 def test_reference_named_reference_fasta(tmp_path):
@@ -204,7 +221,9 @@ def test_contigs_without_chr_names(tmp_path):
     with gzip.open(fasta, "wt") as f:
         f.write(text)
     run_ok(path)
-    body = tool("bcftools", "view", "-H", path / PREFIX / "S001/S001.bcf").splitlines()
+    body = tool(
+        "bcftools", "view", "-H", path / PREFIX / "S001/call/S001.bcf"
+    ).splitlines()
     assert {line.split("\t", 1)[0] for line in body} >= {"ctg1", "ctgX"}
 
 
@@ -256,7 +275,7 @@ def test_unknown_aligner_names_the_choices(tmp_path):
 )
 def test_mextr_index_finds_each_site_at_its_position(run, name):
     """Check that a 1-based region query on a mextr file returns the site there."""
-    path = run / PREFIX / f"S001/S001_{name}"
+    path = run / PREFIX / f"S001/extract/S001_{name}"
     with gzip.open(path, "rt") as f:
         f.readline()
         contig, start, end = f.readline().split("\t")[:3]
@@ -270,17 +289,19 @@ def test_mextr_keeps_the_last_base_of_a_contig(run, tmp_path):
     The toy reads stop short of the contig ends, so the test shortens chr1 in
     the BCF header to end at its last reported site.
     """
-    sample = run / PREFIX / "S001/S001"
-    last = tool("tabix", f"{sample}_non_cpg.txt.gz", "chr1").splitlines()[-1]
+    sample = run / PREFIX / "S001"
+    last = tool("tabix", sample / "extract/S001_non_cpg.txt.gz", "chr1").splitlines()[
+        -1
+    ]
     end = last.split("\t")[2]
     hdr = tmp_path / "header.txt"
     hdr.write_text(
-        tool("bcftools", "view", "-h", f"{sample}.bcf").replace(
+        tool("bcftools", "view", "-h", sample / "call/S001.bcf").replace(
             "ID=chr1,length=2000", f"ID=chr1,length={end}"
         )
     )
     bcf = tmp_path / "short.bcf"
-    tool("bcftools", "reheader", "-h", hdr, "-o", bcf, f"{sample}.bcf")
+    tool("bcftools", "reheader", "-h", hdr, "-o", bcf, sample / "call/S001.bcf")
     tool("bcftools", "index", bcf)
     noncpg = tmp_path / "non_cpg.txt.gz"
     tool("mextr", "--compress", "--noncpgfile", noncpg, "--threshold", "10", bcf)
@@ -291,39 +312,39 @@ def test_mextr_keeps_the_last_base_of_a_contig(run, tmp_path):
 
 def test_coverage_matches_one_genomecov_pass(run):
     """Check that each strand's coverage bigWig holds one bedtools genomecov pass."""
-    bam = run / PREFIX / "S001/S001.bam"
+    bam = run / PREFIX / "S001/align/S001.bam"
     for strand, name in (("-", "neg"), ("+", "pos")):
         lines = tool("bedtools", "genomecov", "-ibam", bam, "-bg", "-strand", strand)
         expected = [
             (c, int(s), int(e), float(v))
             for c, s, e, v in (line.split("\t") for line in lines.splitlines())
         ]
-        bw = pyBigWig.open(str(run / PREFIX / f"S001/S001_coverage_{name}.bw"))
+        bw = pyBigWig.open(str(run / PREFIX / f"S001/signals/S001_coverage_{name}.bw"))
         ours = [(c, *i) for c in bw.chroms() for i in bw.intervals(c) or ()]
         assert sorted(ours) == sorted(expected)
 
 
 def test_qc_json_matches_one_samtools_stats_pass(run):
     """Check that the QC JSON's samtools stats equal one pass over the whole BAM."""
-    sample = run / PREFIX / "S001/S001"
-    lines = tool("samtools", "stats", f"{sample}.bam").splitlines()
+    align = run / PREFIX / "S001/align"
+    lines = tool("samtools", "stats", align / "S001.bam").splitlines()
     fields = [line.split("\t") for line in lines if line.startswith("SN\t")]
     expected = {f[1].strip(":"): numeric(f[2]) for f in fields}
-    report = json.loads(sample.with_suffix(".json").read_text())
+    report = json.loads((align / "S001_qc.json").read_text())
     assert report["samtools_stats"] == expected
 
 
 def test_methylc_holds_every_site_once_in_order(run):
     """Check that the methylC file merges the three bedMethyl files, sorted."""
-    sample = run / PREFIX / "S001/S001"
+    sample = run / PREFIX / "S001"
     sites = []
     for context, name in (("CHH", "chh"), ("CHG", "chg"), ("CG", "cpg")):
-        with gzip.open(f"{sample}_{name}.bed.gz", "rt") as f:
+        with gzip.open(sample / f"extract/S001_{name}.bed.gz", "rt") as f:
             next(f)
             for line in f:
                 c, s, e, _, _, strand, _, _, _, cov, *_ = line.split("\t")
                 sites.append((c, int(s), int(e), context, strand, cov))
-    with gzip.open(f"{sample}_methylc.bed.gz", "rt") as f:
+    with gzip.open(sample / "methylc/S001_methylc.bed.gz", "rt") as f:
         rows = [line.rstrip("\n").split("\t") for line in f]
     ours = [(c, int(s), int(e), t, strand, cov) for c, s, e, t, _, strand, cov in rows]
     assert ours == sorted(sites, key=lambda site: site[:2])
@@ -331,11 +352,11 @@ def test_methylc_holds_every_site_once_in_order(run):
 
 def test_methylation_matches_the_simulated_levels(run):
     """Check that the calls recover the toy reads' 80% CpG and 0% non-CpG methylation."""
-    sample = run / PREFIX / "S001/S001"
+    extract = run / PREFIX / "S001/extract"
     levels = {}
     for context in ("cpg", "chg", "chh"):
         coverage = methylated = 0
-        with gzip.open(f"{sample}_{context}.bed.gz", "rt") as f:
+        with gzip.open(extract / f"S001_{context}.bed.gz", "rt") as f:
             next(f)
             for line in f:
                 fields = line.split("\t")
@@ -351,4 +372,4 @@ def test_methylation_matches_the_simulated_levels(run):
 @pytest.mark.parametrize("name", ["S001", "S002"])
 def test_every_sample_finishes(run, name):
     """Check that each sample gets its methylC file."""
-    assert (run / PREFIX / name / f"{name}_methylc.bed.gz").stat().st_size > 0
+    assert (run / PREFIX / name / f"methylc/{name}_methylc.bed.gz").stat().st_size > 0

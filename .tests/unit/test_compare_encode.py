@@ -6,7 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "validation"))
 
-from compare_encode import read_cpg
+from compare_encode import cpg_bed, read_cpg
 
 
 def test_read_cpg_keeps_five_columns(tmp_path):
@@ -19,3 +19,14 @@ def test_read_cpg_keeps_five_columns(tmp_path):
     assert df.columns == ["chrom", "start", "strand", "coverage", "percent"]
     assert df.row(0) == ("chr1", 32, "-", 7, df["percent"][0])
     assert abs(df["percent"][0] - 42.86) < 1e-4
+
+
+def test_cpg_bed_finds_both_layouts(tmp_path):
+    """Check that a run's CpG file is found in extract/ and in older flat runs."""
+    step = tmp_path / "new/S/extract/S_cpg.bed.gz"
+    flat = tmp_path / "old/S/S_cpg.bed.gz"
+    for path in (step, flat):
+        path.parent.mkdir(parents=True)
+        path.touch()
+    assert cpg_bed(tmp_path / "new", "S") == step
+    assert cpg_bed(tmp_path / "old", "S") == flat

@@ -26,15 +26,15 @@ checkpoint contig_pools:
 
 rule calling:
     input:
-        bam=f"{OUTDIR}/{{sample}}/{{sample}}.bam",
-        bam_csi=f"{OUTDIR}/{{sample}}/{{sample}}.bam.csi",
+        bam=f"{OUTDIR}/{{sample}}/align/{{sample}}.bam",
+        bam_csi=f"{OUTDIR}/{{sample}}/align/{{sample}}.bam.csi",
         pools=f"{REFDIR}/pools",
         fasta=f"{REFDIR}/reference.fasta",
         fasta_fai=f"{REFDIR}/reference.fasta.fai",
         chromsizes=f"{REFDIR}/chromsizes.tsv",
     output:
-        bcf=temp(f"{OUTDIR}/{{sample}}/{{sample}}_{{pool}}.bcf"),
-        report=f"{OUTDIR}/{{sample}}/{{sample}}_{{pool}}.json",
+        bcf=temp(f"{OUTDIR}/{{sample}}/call/{{sample}}_{{pool}}.bcf"),
+        report=f"{OUTDIR}/{{sample}}/call/{{sample}}_{{pool}}.json",
     params:
         out_type=lambda w: config["calling"]["output_type"],
         flags=lambda w: call_flags(),
@@ -79,15 +79,15 @@ def pool_bcfs(wildcards):
         One BCF per pool, in the order of `pools.txt`.
     """
     pools = Path(checkpoints.contig_pools.get().output.pools, "pools.txt")
-    return [f"{prefix(wildcards.sample)}_{pool}.bcf" for pool in pools.read_text().split()]
+    return [f"{prefix(wildcards.sample, 'call')}_{pool}.bcf" for pool in pools.read_text().split()]
 
 
 rule merge_chroms:
     input:
         bcfs=pool_bcfs,
     output:
-        bcf=f"{OUTDIR}/{{sample}}/{{sample}}.bcf",
-        bcf_csi=f"{OUTDIR}/{{sample}}/{{sample}}.bcf.csi",
+        bcf=f"{OUTDIR}/{{sample}}/call/{{sample}}.bcf",
+        bcf_csi=f"{OUTDIR}/{{sample}}/call/{{sample}}.bcf.csi",
     params:
         out_type=lambda w: config["calling"]["output_type"],
     log:
@@ -114,9 +114,9 @@ rule merge_chroms:
 
 rule bcf_md5:
     input:
-        bcf=f"{OUTDIR}/{{sample}}/{{sample}}.bcf",
+        bcf=f"{OUTDIR}/{{sample}}/call/{{sample}}.bcf",
     output:
-        md5=f"{OUTDIR}/{{sample}}/{{sample}}.bcf.md5",
+        md5=f"{OUTDIR}/{{sample}}/call/{{sample}}.bcf.md5",
     log:
         f"{LOGDIR}/bcf_md5/{{sample}}.txt",
     benchmark:

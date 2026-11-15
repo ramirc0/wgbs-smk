@@ -72,7 +72,7 @@ def mapping_fastqs(wildcards):
 STEM = "{sample}" if len(SPLIT) == 1 else "{sample}.{part}"
 
 # gem-mapper writes a report per job. bwa-mem3 writes none.
-MAP_REPORTS = [f"{OUTDIR}/{{sample}}/{STEM}.map.json"] if ALIGNER == "gem3" else []
+MAP_REPORTS = [f"{OUTDIR}/{{sample}}/align/{STEM}.map.json"] if ALIGNER == "gem3" else []
 
 INDEX = {
     "gem3": [f"{REFDIR}/reference.gem"],
@@ -99,11 +99,11 @@ rule:
         index=INDEX,
         contig_md5=f"{REFDIR}/reference.contig_md5",
     output:
-        bam=(temp if len(SPLIT) > 1 else str)(f"{OUTDIR}/{{sample}}/{STEM}.bam"),
-        bam_csi=(temp if len(SPLIT) > 1 else str)(f"{OUTDIR}/{{sample}}/{STEM}.bam.csi"),
+        bam=(temp if len(SPLIT) > 1 else str)(f"{OUTDIR}/{{sample}}/align/{STEM}.bam"),
+        bam_csi=(temp if len(SPLIT) > 1 else str)(f"{OUTDIR}/{{sample}}/align/{STEM}.bam.csi"),
         json=MAP_REPORTS,
         # samtools sort spills about the BAM's size, more than some nodes' /tmp holds.
-        spill=temp(directory(f"{OUTDIR}/{{sample}}/{STEM}.sort")),
+        spill=temp(directory(f"{OUTDIR}/{{sample}}/align/{STEM}.sort")),
     params:
         aligner=ALIGNER,
         read_group=lambda w: read_group(w.sample),
@@ -155,10 +155,10 @@ if len(SPLIT) > 1:
 
     rule merge:
         input:
-            bams=expand(f"{OUTDIR}/{{sample}}/{STEM}.bam", part=SPLIT, allow_missing=True),
+            bams=expand(f"{OUTDIR}/{{sample}}/align/{STEM}.bam", part=SPLIT, allow_missing=True),
         output:
-            bam=f"{OUTDIR}/{{sample}}/{{sample}}.bam",
-            bam_csi=f"{OUTDIR}/{{sample}}/{{sample}}.bam.csi",
+            bam=f"{OUTDIR}/{{sample}}/align/{{sample}}.bam",
+            bam_csi=f"{OUTDIR}/{{sample}}/align/{{sample}}.bam.csi",
         log:
             f"{LOGDIR}/merge/{{sample}}.txt",
         benchmark:
@@ -184,9 +184,9 @@ if len(SPLIT) > 1:
 
 rule bam_md5:
     input:
-        bam=f"{OUTDIR}/{{sample}}/{{sample}}.bam",
+        bam=f"{OUTDIR}/{{sample}}/align/{{sample}}.bam",
     output:
-        md5=f"{OUTDIR}/{{sample}}/{{sample}}.bam.md5",
+        md5=f"{OUTDIR}/{{sample}}/align/{{sample}}.bam.md5",
     log:
         f"{LOGDIR}/bam_md5/{{sample}}.txt",
     benchmark:
@@ -205,11 +205,11 @@ rule bam_md5:
 
 rule bam_qc:
     input:
-        bam=f"{OUTDIR}/{{sample}}/{{sample}}.bam",
+        bam=f"{OUTDIR}/{{sample}}/align/{{sample}}.bam",
         jsons=expand(MAP_REPORTS, part=SPLIT, allow_missing=True),
         chromsizes=f"{REFDIR}/chromsizes.tsv",
     output:
-        json=f"{OUTDIR}/{{sample}}/{{sample}}.json",
+        json=f"{OUTDIR}/{{sample}}/align/{{sample}}_qc.json",
     log:
         f"{LOGDIR}/bam_qc/{{sample}}.txt",
     benchmark:
@@ -233,12 +233,12 @@ rule bam_qc:
 
 rule get_coverage:
     input:
-        bam=f"{OUTDIR}/{{sample}}/{{sample}}.bam",
+        bam=f"{OUTDIR}/{{sample}}/align/{{sample}}.bam",
         chromsizes=f"{REFDIR}/chromsizes.tsv",
     output:
         coverage_bigwigs=[
-            f"{OUTDIR}/{{sample}}/{{sample}}_coverage_neg.bw",
-            f"{OUTDIR}/{{sample}}/{{sample}}_coverage_pos.bw",
+            f"{OUTDIR}/{{sample}}/signals/{{sample}}_coverage_neg.bw",
+            f"{OUTDIR}/{{sample}}/signals/{{sample}}_coverage_pos.bw",
         ],
     params:
         tmpdir=config["tmpdir"],

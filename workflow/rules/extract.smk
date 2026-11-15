@@ -1,21 +1,21 @@
 rule gembs_extract:
     input:
-        bcf=f"{OUTDIR}/{{sample}}/{{sample}}.bcf",
-        bcf_csi=f"{OUTDIR}/{{sample}}/{{sample}}.bcf.csi",
+        bcf=f"{OUTDIR}/{{sample}}/call/{{sample}}.bcf",
+        bcf_csi=f"{OUTDIR}/{{sample}}/call/{{sample}}.bcf.csi",
     output:
-        cpgfile=f"{OUTDIR}/{{sample}}/{{sample}}_cpg.txt.gz",
-        noncpgfile=f"{OUTDIR}/{{sample}}/{{sample}}_non_cpg.txt.gz",
+        cpgfile=f"{OUTDIR}/{{sample}}/extract/{{sample}}_cpg.txt.gz",
+        noncpgfile=f"{OUTDIR}/{{sample}}/extract/{{sample}}_non_cpg.txt.gz",
         bed_gz=[
-            f"{OUTDIR}/{{sample}}/{{sample}}_chg.bed.gz",
-            f"{OUTDIR}/{{sample}}/{{sample}}_chh.bed.gz",
-            f"{OUTDIR}/{{sample}}/{{sample}}_cpg.bed.gz",
+            f"{OUTDIR}/{{sample}}/extract/{{sample}}_chg.bed.gz",
+            f"{OUTDIR}/{{sample}}/extract/{{sample}}_chh.bed.gz",
+            f"{OUTDIR}/{{sample}}/extract/{{sample}}_cpg.bed.gz",
         ],
         bigwigs=[
-            f"{OUTDIR}/{{sample}}/{{sample}}_neg.bw",
-            f"{OUTDIR}/{{sample}}/{{sample}}_pos.bw",
+            f"{OUTDIR}/{{sample}}/extract/{{sample}}_neg.bw",
+            f"{OUTDIR}/{{sample}}/extract/{{sample}}_pos.bw",
         ],
         sidecars=[
-            f"{OUTDIR}/{{sample}}/{{sample}}_{name}{ext}"
+            f"{OUTDIR}/{{sample}}/extract/{{sample}}_{name}{ext}"
             for name, exts in [
                 ("cpg.txt.gz", (".tbi", ".md5")),
                 ("non_cpg.txt.gz", (".tbi", ".md5")),
@@ -67,18 +67,18 @@ rule extract_signal:
     input:
         chromsizes=f"{REFDIR}/chromsizes.tsv",
         bed_gz=[
-            f"{OUTDIR}/{{sample}}/{{sample}}_chg.bed.gz",
-            f"{OUTDIR}/{{sample}}/{{sample}}_chh.bed.gz",
-            f"{OUTDIR}/{{sample}}/{{sample}}_cpg.bed.gz",
+            f"{OUTDIR}/{{sample}}/extract/{{sample}}_chg.bed.gz",
+            f"{OUTDIR}/{{sample}}/extract/{{sample}}_chh.bed.gz",
+            f"{OUTDIR}/{{sample}}/extract/{{sample}}_cpg.bed.gz",
         ],
     output:
         bigwigs=[
-            f"{OUTDIR}/{{sample}}/{{sample}}_cpg_neg.bw",
-            f"{OUTDIR}/{{sample}}/{{sample}}_cpg_pos.bw",
-            f"{OUTDIR}/{{sample}}/{{sample}}_chg_pos.bw",
-            f"{OUTDIR}/{{sample}}/{{sample}}_chg_neg.bw",
-            f"{OUTDIR}/{{sample}}/{{sample}}_chh_pos.bw",
-            f"{OUTDIR}/{{sample}}/{{sample}}_chh_neg.bw",
+            f"{OUTDIR}/{{sample}}/signals/{{sample}}_cpg_neg.bw",
+            f"{OUTDIR}/{{sample}}/signals/{{sample}}_cpg_pos.bw",
+            f"{OUTDIR}/{{sample}}/signals/{{sample}}_chg_pos.bw",
+            f"{OUTDIR}/{{sample}}/signals/{{sample}}_chg_neg.bw",
+            f"{OUTDIR}/{{sample}}/signals/{{sample}}_chh_pos.bw",
+            f"{OUTDIR}/{{sample}}/signals/{{sample}}_chh_neg.bw",
         ],
     params:
         tmpdir=config["tmpdir"],
@@ -107,12 +107,12 @@ rule extract_signal:
 
 rule get_methylc:
     input:
-        chh_bed_gz=f"{OUTDIR}/{{sample}}/{{sample}}_chh.bed.gz",
-        chg_bed_gz=f"{OUTDIR}/{{sample}}/{{sample}}_chg.bed.gz",
-        cpg_bed_gz=f"{OUTDIR}/{{sample}}/{{sample}}_cpg.bed.gz",
+        chh_bed_gz=f"{OUTDIR}/{{sample}}/extract/{{sample}}_chh.bed.gz",
+        chg_bed_gz=f"{OUTDIR}/{{sample}}/extract/{{sample}}_chg.bed.gz",
+        cpg_bed_gz=f"{OUTDIR}/{{sample}}/extract/{{sample}}_cpg.bed.gz",
     output:
-        methylc_bed_gz=f"{OUTDIR}/{{sample}}/{{sample}}_methylc.bed.gz",
-        methylc_tbi=f"{OUTDIR}/{{sample}}/{{sample}}_methylc.bed.gz.tbi",
+        methylc_bed_gz=f"{OUTDIR}/{{sample}}/methylc/{{sample}}_methylc.bed.gz",
+        methylc_tbi=f"{OUTDIR}/{{sample}}/methylc/{{sample}}_methylc.bed.gz.tbi",
     log:
         f"{LOGDIR}/get_methylc/{{sample}}.txt",
     benchmark:

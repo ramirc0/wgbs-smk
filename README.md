@@ -40,19 +40,19 @@ pixi workspaces split the launcher from the rule env.
 
 ### Outputs
 
-Per sample, under `results/<run_id>/<sample>/`:
+Each sample writes to `<outdir>/<run_id>/<sample>/<step>/`. Logs and
+benchmarks mirror the run under `logs/<run_id>/` and `benchmarks/<run_id>/`.
+Split FASTQs, part BAMs, sort spills, per-pool BCFs and coverage bedGraphs are
+deleted once used. `<s>` is the sample ID.
 
-| Files | Step |
+| Step directory | Files |
 |---|---|
-| `<s>.map.json`, or `<s>.NNN.map.json` per part | gem-mapper reports, with `aligner: gem3` (`split/` FASTQs and part BAMs are temporary) |
-| `<s>.bam`, `.bam.csi`, `.bam.md5` | Final alignments |
-| `<s>.json` | Mapping QC: any gem-mapper reports, `samtools stats` and average coverage |
-| `<s>_coverage_{neg,pos}.bw` | Strand-specific coverage (the bedGraphs are temporary) |
-| `<s>_<pool>.json` | Per-pool `bs_call` reports |
-| `<s>.bcf`, `.bcf.csi`, `.bcf.md5` | Whole-genome methylation calls |
-| `<s>_{cpg,non_cpg}.txt.gz`, `<s>_{chg,chh,cpg}.bed.gz`, `<s>_{neg,pos}.bw` | `mextr` outputs |
-| `<s>_{cpg,chg,chh}_{pos,neg}.bw` | Methylation level per context and strand |
-| `<s>_methylc.bed.gz` (+ `.tbi`) | Combined CG/CHG/CHH methylC file |
+| `split/` | Nothing once the run ends. With `fastq_split` above 1 it holds the FASTQ parts while they map. |
+| `align/` | `<s>.bam` (+ `.csi`, `.md5`); gem-mapper reports `<s>.map.json`, or `<s>.NNN.map.json` per part; mapping QC `<s>_qc.json` with `samtools stats` and average coverage |
+| `call/` | `<s>.bcf` (+ `.csi`, `.md5`), whole-genome calls; `<s>_<pool>.json`, one `bs_call` report per pool |
+| `extract/` | `mextr` outputs: `<s>_{cpg,non_cpg}.txt.gz`, `<s>_{chg,chh,cpg}.bed.gz` (+ `.tbi`), `<s>_{chg,chh,cpg}.bb`, `<s>_{neg,pos}.bw`, each with an `.md5` |
+| `signals/` | `<s>_coverage_{neg,pos}.bw`, strand coverage; `<s>_{cpg,chg,chh}_{neg,pos}.bw`, methylation level per context and strand |
+| `methylc/` | `<s>_methylc.bed.gz` (+ `.tbi`), the CG, CHG and CHH sites in one file |
 
 `results/refs/` holds:
 
@@ -111,7 +111,7 @@ pyproject.toml           ruff + numpydoc config
 
 ### Idioms
 
-- **Outputs grouped by `run_id`** under `results/<run_id>/<sample>/`. Logs and
+- **Outputs grouped by `run_id`** under `results/<run_id>/<sample>/<step>/`. Logs and
   benchmarks mirror it (`logs/<run_id>/`, `benchmarks/<run_id>/`). The
   reference artifacts are run-independent and go in `results/refs/`.
 - **Sample sheet** is a TSV read once in `common.smk` into `SHEET`, one row
