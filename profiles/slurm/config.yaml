@@ -18,7 +18,7 @@ slurm-efficiency-report-path: logs/efficiency
 slurm-efficiency-threshold: 0.8
 slurm-init-seconds-before-status-checks: 10
 # NODE_FAIL nodes join this list. An --exclude in slurm_extra would override it.
-slurm-exclude-failed-nodes: z1024,z1056,z1062,z1072
+slurm-exclude-failed-nodes: z1024,z1056,z1062,z1072,z1081
 
 default-resources:
   slurm_partition: 12hours
