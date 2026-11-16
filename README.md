@@ -1,4 +1,4 @@
-# WGBS Snakemake Pipeline
+# wgbs-smk
 
 A Snakemake workflow for whole genome bisulfite sequencing (WGBS). It maps
 paired-end reads with [GEM3](https://github.com/smarco/gem3-mapper) or
@@ -14,7 +14,40 @@ contig pool and merges the calls. It then writes bedMethyl, methylC and bigWig
 tracks per sample. It runs locally or on SLURM through Snakemake profiles. Two
 pixi workspaces split the launcher from the rule env.
 
-### Pipeline steps
+### Layout
+
+```
+.tests/
+  integration/           toy genome + reads, run by `pixi run test`
+  unit/                  script unit tests, run by `pixi run test`
+  validation/            four ENCODE replicates on GRCh38, compared with ENCODE4's calls
+config/
+  config.yaml.template   parameters + paths; copy to <run_id>/config.yaml
+  samples.tsv.template   one row per sample: sample_id, dataset, fastq_1, fastq_2
+  <run_id>/              one run's config.yaml and samples.tsv (gitignored)
+workflow/
+  Snakefile              includes the rules + rule all
+  rules/
+    common.smk           config, sample sheet, path constants, helpers
+    indexing.smk         reference FASTA, chromsizes, contig metadata, aligner index
+    mapping.smk          split, map, merge, mapping QC, strand coverage
+    call.smk             contig pools, per-pool bs_call, merged BCF
+    extract.smk          mextr, strand bigWigs, methylC
+    report.smk           QC table, figures and report
+  report/qc.yaml         QC report spec: metrics and ENCODE audits
+  scripts/               argparse scripts, each with build_parser() + main()
+  envs/
+    pixi.toml            rule env (pixi workspace)
+    recipes/             gem3-mapper and gemBS-rs, built from source
+    report/pixi.toml     QC report env, qc-report
+profiles/
+  local/config.yaml      local execution
+  slurm/config.yaml      SLURM (per-rule resources, retried with more memory)
+pixi.toml                launcher env + test and lint tasks
+pyproject.toml           ruff + numpydoc config
+```
+
+### Steps
 
 1. **indexing**: decompress the reference, index it, write chromsizes and the contig metadata.
 2. **gem_indexer** or **bwamem3_index**: build the aligner's bisulfite index.
@@ -88,39 +121,6 @@ The steps from indexing to `mextr` run gemBS-rs's commands with its
 | `mextr --tabix` indexes the text outputs as it writes them | `tabix` indexes them afterwards |
 | `mextr` drops each contig's last base | `mextr` keeps it |
 | HTML and LaTeX QC reports, merged call JSON | ENCODE-style mapping QC JSON, coverage and per-context bigWigs, methylC |
-
-### Layout
-
-```
-.tests/
-  integration/           toy genome + reads, run by `pixi run test`
-  unit/                  script unit tests, run by `pixi run test`
-  validation/            four ENCODE replicates on GRCh38, compared with ENCODE4's calls
-config/
-  config.yaml.template   parameters + paths; copy to <run_id>/config.yaml
-  samples.tsv.template   one row per sample: sample_id, dataset, fastq_1, fastq_2
-  <run_id>/              one run's config.yaml and samples.tsv (gitignored)
-workflow/
-  Snakefile              includes the rules + rule all
-  rules/
-    common.smk           config, sample sheet, path constants, helpers
-    indexing.smk         reference FASTA, chromsizes, contig metadata, aligner index
-    mapping.smk          split, map, merge, mapping QC, strand coverage
-    call.smk             contig pools, per-pool bs_call, merged BCF
-    extract.smk          mextr, strand bigWigs, methylC
-    report.smk           QC table, figures and report
-  report/qc.yaml         QC report spec: metrics and ENCODE audits
-  scripts/               argparse scripts, each with build_parser() + main()
-  envs/
-    pixi.toml            rule env (pixi workspace)
-    recipes/             gem3-mapper and gemBS-rs, built from source
-    report/pixi.toml     QC report env, qc-report
-profiles/
-  local/config.yaml      local execution
-  slurm/config.yaml      SLURM (per-rule resources, retried with more memory)
-pixi.toml                launcher env + test and lint tasks
-pyproject.toml           ruff + numpydoc config
-```
 
 ### Idioms
 
