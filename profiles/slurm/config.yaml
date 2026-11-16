@@ -68,10 +68,12 @@ set-resources:
     runtime: 720m
   mapping:
     constraint: cascadelake
-    slurm_partition: 5days
+    # Either partition: each holds about a dozen cascadelake nodes. A 30X WGBS
+    # sample maps in 3-6 h, within the 12-hour limit.
+    slurm_partition: "5days,12hours"
     # gem-mapper plus samtools sort's 768 MB per thread.
     mem_mb: 160000 * attempt
-    runtime: 2880m
+    runtime: 600m
   bwamem3_index:
     # About 12 bytes per base of the doubled seed text, four genome copies.
     mem_mb: 200000 * attempt
