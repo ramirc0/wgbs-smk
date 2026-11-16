@@ -241,15 +241,15 @@ The workflow stops with this hint when it finds the old names.
 
 Each run keeps its config and sample sheet in `config/<run_id>/`. A `run_id`
 is the start date and a slug that names the data, such as
-`2026-11-15-mohd-wgbs`. Set `run_id` and `samples` in the config to match.
+`2026-11-15-k562-wgbs`. Set `run_id` and `samples` in the config to match.
 
 ```bash
-C=config/2026-11-15-mohd-wgbs/config.yaml
+C=config/2026-11-15-k562-wgbs/config.yaml
 pixi shell                                                   # enter the launcher env
 snakemake -n -p --profile profiles/slurm --configfile $C     # dry run
 snakemake --profile profiles/local --configfile $C           # local
-pixi run slurm 2026-11-15-mohd-wgbs "--configfile $C"        # SLURM
-pixi run slurm 2026-11-15-mohd-wgbs "all -n --configfile $C" # targets and flags in one quoted arg
+pixi run slurm 2026-11-15-k562-wgbs "--configfile $C"        # SLURM
+pixi run slurm 2026-11-15-k562-wgbs "all -n --configfile $C" # targets and flags in one quoted arg
 pixi run lint                                                # ruff + numpydoc
 ```
 
@@ -308,11 +308,11 @@ ENCODE4 mapped R1 only, so its coverage is about half of ours.
 - `Illegal instruction` from gem-mapper. The node lacks AVX-512. Keep the
   `cascadelake` constraint on its rules.
 
-If you have any questions or would like to provide constructive feedback, please open an issue or reach out to the MOHD DACC.
+If you have any questions or would like to provide constructive feedback, please open an issue.
 
 ## Authors
 
-Christian Ramirez ([@ramirc0](https://github.com/ramirc0)), MOHD DACC
+Christian Ramirez ([@ramirc0](https://github.com/ramirc0))
 
 ## License
 
