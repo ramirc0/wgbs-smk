@@ -217,9 +217,10 @@ The workflow stops with this hint when it finds the old names.
 #### Configuration
 
 - `samples`, `outdir`, `run_id`, `pixi_env`: as in the template.
-- `tmpdir`: scratch for `gem-indexer` and the coverage bedGraphs, several GB
-  per job. Use `.tmp` where node `/tmp` is small or shared.
-  `samtools sort` spills beside each BAM instead.
+- `tmpdir`: scratch for the coverage bedGraphs, several GB per job. Use `.tmp`
+  where node `/tmp` is small or shared. `samtools sort` spills beside each BAM.
+  `gem-indexer` uses the job's own tmpdir, because its suffix-array file
+  (88 GB for GRCh38) is written out of order and crawls on a network file system.
 - `references.reference`: reference FASTA, plain or gzipped.
 - `assembly`, `species` (optional): `AS` and `SP` tags of the SAM sequence
   dictionary. `species` MUST NOT contain whitespace.

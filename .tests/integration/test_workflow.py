@@ -198,6 +198,28 @@ def test_sort_spills_beside_the_bam(tmp_path, aligner):
     assert f"-T {PREFIX}/S001/align/S001.001.sort/" in done.stdout
 
 
+def test_gem_indexer_spills_in_the_job_tmpdir(tmp_path):
+    """Check that gem-indexer writes its temp files in the job's tmpdir.
+
+    Its suffix-array file, 88 GB for GRCh38, is written out of order. On a
+    network file system, as the config tmpdir may be, the phase crawls.
+    """
+    path = workdir(tmp_path / "run")
+    node = tmp_path / "node"
+    # --set-resources takes several values, so the target goes first.
+    done = snakemake(
+        path,
+        "results/refs/reference.gem",
+        "-n",
+        "-p",
+        "--set-resources",
+        f"gem_indexer:tmpdir={node}",
+    )
+    assert done.returncode == 0, done.stderr[-5000:]
+    assert f"mktemp -d -p {node}" in done.stdout
+    assert "--tmp-folder scratch" not in done.stdout
+
+
 def test_fastq_split_into_three_parts(tmp_path):
     """Check that fastq_split other than 2 maps every part."""
     path = workdir(tmp_path, [("fastq_split: 2 ", "fastq_split: 3 ")])
