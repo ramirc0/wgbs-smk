@@ -31,8 +31,8 @@ set-threads:
   gem_indexer: 52
   bwamem3_index: 52
   split: 8
-  mapping: 52
-  mapping_bwamem3: 52
+  mapping: 13
+  mapping_bwamem3: 13
   merge: 13
   bam_qc: 26
   bam_md5: 1
@@ -68,12 +68,12 @@ set-resources:
     runtime: 720m
   mapping:
     constraint: cascadelake
-    # Either partition: each holds about a dozen cascadelake nodes. A 30X WGBS
-    # sample maps in 3-6 h, within the 12-hour limit.
-    slurm_partition: "5days,12hours"
-    # gem-mapper plus samtools sort's 768 MB per thread.
-    mem_mb: 160000 * attempt
-    runtime: 600m
+    # At 13 threads a 30X WGBS sample can pass the 12hours limit: 5 h at 52
+    # threads, 1.6 h of it samtools sort's final merge.
+    slurm_partition: 5days
+    # gem-mapper's 35 GB plus samtools sort's 768 MB per thread.
+    mem_mb: 64000 * attempt
+    runtime: 1440m
   bwamem3_index:
     # About 12 bytes per base of the doubled seed text, four genome copies.
     mem_mb: 200000 * attempt
@@ -83,7 +83,7 @@ set-resources:
     constraint: cascadelake
     slurm_partition: 5days
     # bwa-mem3 peaks near 57 GB, plus samtools sort's 768 MB per thread.
-    mem_mb: 160000 * attempt
+    mem_mb: 80000 * attempt
     runtime: 2880m
   merge:
     slurm_partition: 4hours
