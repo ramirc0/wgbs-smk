@@ -12,9 +12,13 @@ package:
 source:
   git: https://github.com/smarco/gem3-mapper.git
   rev: ${{ rev }}
+  # Upstream closes an input block at a read-buffer end once the partial line
+  # there fills it. It drops that line's start, and the next block fails to parse.
+  patches:
+    - input-block-partial-line.patch
 
 build:
-  number: 0
+  number: 1
   script:
     - sed -i.bak "/^PATH_INCLUDE=/ s@\$@ -I$PREFIX/include@; /^PATH_LIB=/ s@\$@ -L$PREFIX/lib@" Makefile.mk.in
     - export CC="$CC -fcommon"

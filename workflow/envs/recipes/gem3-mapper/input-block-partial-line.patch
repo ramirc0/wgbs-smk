@@ -1,0 +1,14 @@
+--- a/src/io/input_file_sliced.c
++++ b/src/io/input_file_sliced.c
+@@ -290,8 +290,9 @@
+   ++(input_file_sliced->current_buffer_id);
+   input_file_sliced->current_buffer_offset = 0;
+   input_file_sliced->current_buffer_line = 0;
+-  // Check amount of data read
+-  return (forced_read_lines==0 && read_lines%8==0 && read_size>=prefered_read_size);
++  // The buffer's last characters start a line that the next buffer ends.
++  // A block closed here loses them, and the next block starts mid-line.
++  return false;
+ }
+ /*
+  * Current Input-Buffer
