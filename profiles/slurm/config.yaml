@@ -69,12 +69,12 @@ set-resources:
     runtime: 720m
   mapping:
     constraint: cascadelake
-    # At 13 threads a 30X WGBS sample can pass the 12hours limit: 5 h at 52
-    # threads, 1.6 h of it samtools sort's final merge.
-    slurm_partition: 5days
+    # Either partition: each holds about a dozen cascadelake nodes. A 30X WGBS
+    # sample should map in about 8 h at 12 threads. A retry gets 24 h, so only 5days.
+    slurm_partition: "5days,12hours"
     # gem-mapper's 35 GB plus samtools sort's 768 MB per thread.
     mem_mb: 64000 * attempt
-    runtime: 1440m
+    runtime: 720 * attempt
   bwamem3_index:
     # About 12 bytes per base of the doubled seed text, four genome copies.
     mem_mb: 200000 * attempt
