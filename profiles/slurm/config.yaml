@@ -26,14 +26,15 @@ default-resources:
   mem_mb: 4000
   slurm_extra: "--cpu-freq=High-High:Performance"
 
+# SLURM allocates whole 2-thread cores, so an odd count gets one CPU more.
 set-threads:
   indexing: 4
   gem_indexer: 52
   bwamem3_index: 52
   split: 8
-  mapping: 13
-  mapping_bwamem3: 13
-  merge: 13
+  mapping: 12
+  mapping_bwamem3: 12
+  merge: 12
   bam_qc: 26
   bam_md5: 1
   bcf_md5: 1
