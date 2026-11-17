@@ -12,6 +12,10 @@ max-jobs-per-timespan: 50/10s
 # With jobs: unlimited the only cap is max-jobs-per-timespan, so the scheduler
 # only orders that queue. Greedy starts big-input jobs first; give a small blocking rule `priority:`.
 scheduler: greedy
+# Mapping jobs each stream a sort spill to shared storage. Uncapped, they
+# stalled nodes.
+resources:
+  - mapping_slots=64
 
 slurm-efficiency-report: true
 slurm-efficiency-report-path: logs/efficiency
@@ -69,12 +73,12 @@ set-resources:
     runtime: 720m
   mapping:
     constraint: cascadelake
-    # Either partition: each holds about a dozen cascadelake nodes. A 30X WGBS
-    # sample should map in about 8 h at 12 threads. A retry gets 24 h, so only 5days.
-    slurm_partition: "5days,12hours"
+    # A 585 M-pair sample takes about 11 h at 12 threads, too close to 12hours.
+    slurm_partition: 5days
     # gem-mapper's 35 GB plus samtools sort's 768 MB per thread.
     mem_mb: 64000 * attempt
-    runtime: 720 * attempt
+    runtime: 1440m
+    mapping_slots: 1
   bwamem3_index:
     # About 12 bytes per base of the doubled seed text, four genome copies.
     mem_mb: 200000 * attempt
@@ -86,6 +90,7 @@ set-resources:
     # bwa-mem3 peaks near 57 GB, plus samtools sort's 768 MB per thread.
     mem_mb: 80000 * attempt
     runtime: 2880m
+    mapping_slots: 1
   merge:
     slurm_partition: 4hours
     mem_mb: 8000 * attempt
