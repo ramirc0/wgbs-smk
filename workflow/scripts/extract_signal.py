@@ -131,7 +131,9 @@ def main(argv=None):
                 bedgraph = Path(tmp, f"{context}_{strand}.bedgraph")
                 sites.write_csv(bedgraph, include_header=False, separator="\t")
                 threads = str(max(1, args.threads // 4))
-                cmd = ["bigtools", "bedgraphtobigwig", "--inmemory", "-t", threads]
+                # bigtools' parallel reader can miss a last contig of one row.
+                cmd = ["bigtools", "bedgraphtobigwig", "--inmemory", "-p", "no"]
+                cmd += ["-t", threads]
                 jobs.append(subprocess.Popen([*cmd, bedgraph, args.chromsizes, bigwig]))
             del levels  # free it before reading the next context
         failed = [job.args for job in jobs if job.wait() != 0]
