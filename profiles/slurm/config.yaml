@@ -60,7 +60,7 @@ set-threads:
 # their rewrites.
 set-resources:
   indexing:
-    slurm_partition: 4hours
+    slurm_partition: "4hours,12hours"
     mem_mb: 8000 * attempt
     runtime: 60m
   gem_indexer:
@@ -92,61 +92,61 @@ set-resources:
     runtime: 2880m
     mapping_slots: 1
   merge:
-    slurm_partition: 4hours
+    slurm_partition: "4hours,12hours"
     mem_mb: 8000 * attempt
     runtime: 240m
   bam_qc:
-    slurm_partition: 4hours
+    slurm_partition: "4hours,12hours"
     mem_mb: 16000 * attempt
     runtime: 240m
   bam_md5:
-    slurm_partition: 4hours
+    slurm_partition: "4hours,12hours"
     mem_mb: 1000 * attempt
     runtime: 120m
   bcf_md5:
-    slurm_partition: 4hours
+    slurm_partition: "4hours,12hours"
     mem_mb: 1000 * attempt
     runtime: 120m
   get_coverage:
-    slurm_partition: 4hours
+    slurm_partition: "4hours,12hours"
     mem_mb: 64000 * attempt
     runtime: 240m
   contig_pools:
-    slurm_partition: 4hours
+    slurm_partition: "4hours,12hours"
     mem_mb: 1000 * attempt
     runtime: 30m
   calling:
-    slurm_partition: 4hours
+    slurm_partition: "4hours,12hours"
     mem_mb: 4000 * attempt
     runtime: 120m
   merge_chroms:
-    slurm_partition: 4hours
+    slurm_partition: "4hours,12hours"
     mem_mb: 4000 * attempt
     runtime: 120m
   gembs_extract:
     # mextr: 17.5 min on cascadelake, 31 on broadwell.
     constraint: cascadelake
-    slurm_partition: 4hours
+    slurm_partition: "4hours,12hours"
     mem_mb: 16000 * attempt
     runtime: 240m
   extract_signal:
-    slurm_partition: 4hours
+    slurm_partition: "4hours,12hours"
     mem_mb: 200000 * attempt
     runtime: 240m
   get_methylc:
-    slurm_partition: 4hours
+    slurm_partition: "4hours,12hours"
     mem_mb: 200000 * attempt
     runtime: 240m
   gather_qc:
-    slurm_partition: 4hours
+    slurm_partition: "4hours,12hours"
     mem_mb: 16000 * attempt
     runtime: 120m
   qc_figures:
-    slurm_partition: 4hours
+    slurm_partition: "4hours,12hours"
     mem_mb: 16000 * attempt
     runtime: 120m
   qc_report:
-    slurm_partition: 4hours
+    slurm_partition: "4hours,12hours"
     mem_mb: 16000 * attempt
     runtime: 60m
 
