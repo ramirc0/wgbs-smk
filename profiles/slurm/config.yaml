@@ -16,6 +16,9 @@ scheduler: greedy
 # stalled nodes.
 resources:
   - mapping_slots=64
+  # extract_signal and get_methylc each take 60 to 80 GB within minutes. Several
+  # starting on one node stalled its memory reclaim until SLURM lost the node.
+  - polars_slots=2
 
 slurm-efficiency-report: true
 slurm-efficiency-report-path: logs/efficiency
@@ -128,15 +131,18 @@ set-resources:
     constraint: cascadelake
     slurm_partition: "4hours,12hours"
     mem_mb: 16000 * attempt
-    runtime: 240m
+    # mextr hangs after a failed write. A short limit ends it.
+    runtime: 120m
   extract_signal:
     slurm_partition: "4hours,12hours"
     mem_mb: 200000 * attempt
     runtime: 240m
+    polars_slots: 1
   get_methylc:
     slurm_partition: "4hours,12hours"
     mem_mb: 200000 * attempt
     runtime: 240m
+    polars_slots: 1
   gather_qc:
     slurm_partition: "4hours,12hours"
     mem_mb: 16000 * attempt
