@@ -60,7 +60,7 @@ pyproject.toml           ruff + numpydoc config
 5. **merge**: with several parts, merge the sorted parts into one read group.
 6. **bam_md5**: checksum the final BAM.
 7. **bam_qc**: write the mapping QC JSON with `samtools stats` and average coverage.
-8. **get_coverage**: strand coverage with `bedtools genomecov` and `bigtools`.
+8. **get_coverage**: strand coverage with `figwig bam2bw`, one count per aligned base.
 9. **contig_pools**: group the contigs into `bs_call` jobs as gemBS does, once
    per reference. A contig of at least `calling.contig_pool_limit` bases is its
    own job. The rest are packed into `Pool@N` jobs of about that size.
@@ -77,7 +77,7 @@ pyproject.toml           ruff + numpydoc config
 
 Each sample writes to `<outdir>/<run_id>/<sample>/<step>/`. Logs and
 benchmarks mirror the run under `logs/<run_id>/` and `benchmarks/<run_id>/`.
-Split FASTQs, part BAMs, sort spills, per-pool BCFs and coverage bedGraphs are
+Split FASTQs, part BAMs, sort spills, per-pool BCFs and methylation bedGraphs are
 deleted once used. `<s>` is the sample ID.
 
 | Step directory | Files |
@@ -217,8 +217,9 @@ The workflow stops with this hint when it finds the old names.
 #### Configuration
 
 - `samples`, `outdir`, `run_id`, `pixi_env`: as in the template.
-- `tmpdir`: scratch for the coverage bedGraphs, several GB per job. Use `.tmp`
-  where node `/tmp` is small or shared. `samtools sort` spills beside each BAM.
+- `tmpdir`: scratch for the methylation bedGraphs, tens of GB per job, and the
+  coverage step's BAM index. Use `.tmp` where node `/tmp` is small or shared.
+  `samtools sort` spills beside each BAM.
   `gem-indexer` uses the job's own tmpdir, because its suffix-array file
   (88 GB for GRCh38) is written out of order and crawls on a network file system.
 - `references.reference`: reference FASTA, plain or gzipped.

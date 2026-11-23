@@ -236,12 +236,11 @@ rule get_coverage:
         bam=f"{OUTDIR}/{{sample}}/align/{{sample}}.bam",
         chromsizes=f"{REFDIR}/chromsizes.tsv",
     output:
-        coverage_bigwigs=[
-            f"{OUTDIR}/{{sample}}/signals/{{sample}}_coverage_neg.bw",
-            f"{OUTDIR}/{{sample}}/signals/{{sample}}_coverage_pos.bw",
-        ],
+        neg=f"{OUTDIR}/{{sample}}/signals/{{sample}}_coverage_neg.bw",
+        pos=f"{OUTDIR}/{{sample}}/signals/{{sample}}_coverage_pos.bw",
     params:
         tmpdir=config["tmpdir"],
+        prefix=f"{OUTDIR}/{{sample}}/signals/{{sample}}_coverage",
     log:
         f"{LOGDIR}/get_coverage/{{sample}}.txt",
     benchmark:
@@ -252,28 +251,24 @@ rule get_coverage:
         r"""
         exec &> >(tee {log:q})
 
-        # One genomecov per contig and strand, largest contigs first so the
-        # last jobs are short. A contig's two strands run side by side, so the
-        # second reads its BAM region from the page cache.
+        # figwig reads a sorted BAM region by region on all threads only when
+        # a .bai sits beside it. With the .csi alone it read a 60 GB BAM in
+        # 2.4 h, against 2 min. The .bai goes beside a link to the BAM.
         mkdir -p {params.tmpdir:q}
         STAGE=$(mktemp -d -p {params.tmpdir:q})
-        mkdir "$STAGE"/neg "$STAGE"/pos
-        parallel \
-            -j {threads} \
-            "set -o pipefail; samtools view -u {input.bam:q} {{1}} | bedtools genomecov -ibam stdin -bg -strand {{2}} > $STAGE/{{3}}/{{1}}.bg" \
-            :::: <(sort -k2,2nr {input.chromsizes:q} | cut -f1) \
-            ::: - + \
-            :::+ neg pos
+        trap 'rm -r "$STAGE"' EXIT
+        ln -s "$(realpath {input.bam:q})" "$STAGE"/reads.bam
+        samtools index -b -@ {threads} "$STAGE"/reads.bam "$STAGE"/reads.bam.bai
 
-        # bigtools takes contigs in sort -k1,1 order. --inmemory keeps it off
-        # disk, where a failed write shows only as SendError::Disconnected.
-        cut -f1 {input.chromsizes:q} | LC_ALL=C sort > "$STAGE"/order.txt
-        parallel \
-            -j 2 \
-            "set -o pipefail; sed 's|.*|$STAGE/{{1}}/&.bg|' $STAGE/order.txt | xargs -d '\n' cat | bigtools bedgraphtobigwig --inmemory -t $(( ({threads} + 1) / 2 )) - {input.chromsizes:q} {{2}}" \
-            ::: neg pos \
-            :::+ {output.coverage_bigwigs:q}
-        rm -r "$STAGE"
+        # -c counts each aligned base, as bedtools genomecov -bg -strand does.
+        OPENBLAS_NUM_THREADS=1 figwig bam2bw \
+            "$STAGE"/reads.bam \
+            -s {input.chromsizes:q} \
+            -n {params.prefix:q} \
+            -c \
+            -p {threads}
+        mv {params.prefix:q}.-.bw {output.neg:q}
+        mv {params.prefix:q}.+.bw {output.pos:q}
 
         sync {output:q}
         """

@@ -334,17 +334,28 @@ def test_mextr_keeps_the_last_base_of_a_contig(run, tmp_path):
 
 
 def test_coverage_matches_one_genomecov_pass(run):
-    """Check that each strand's coverage bigWig holds one bedtools genomecov pass."""
+    """Check that each strand's coverage equals one bedtools genomecov pass at every base.
+
+    figwig and genomecov cut runs of equal coverage at different places, so the
+    comparison is per base and not per interval.
+    """
     bam = run / PREFIX / "S001/align/S001.bam"
     for strand, name in (("-", "neg"), ("+", "pos")):
-        lines = tool("bedtools", "genomecov", "-ibam", bam, "-bg", "-strand", strand)
-        expected = [
-            (c, int(s), int(e), float(v))
-            for c, s, e, v in (line.split("\t") for line in lines.splitlines())
-        ]
         bw = pyBigWig.open(str(run / PREFIX / f"S001/signals/S001_coverage_{name}.bw"))
-        ours = [(c, *i) for c in bw.chroms() for i in bw.intervals(c) or ()]
-        assert sorted(ours) == sorted(expected)
+        expected = {contig: [0.0] * size for contig, size in bw.chroms().items()}
+        lines = tool("bedtools", "genomecov", "-ibam", bam, "-bg", "-strand", strand)
+        for contig, start, end, depth in (
+            line.split("\t") for line in lines.splitlines()
+        ):
+            expected[contig][int(start) : int(end)] = [float(depth)] * (
+                int(end) - int(start)
+            )
+        assert any(any(depths) for depths in expected.values())
+        for contig, size in bw.chroms().items():
+            ours = [0.0] * size
+            for start, end, depth in bw.intervals(contig) or ():
+                ours[start:end] = [depth] * (end - start)
+            assert ours == expected[contig], contig
 
 
 def test_qc_json_matches_one_samtools_stats_pass(run):

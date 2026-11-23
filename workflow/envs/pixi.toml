@@ -12,17 +12,30 @@ pybigwig = "*"
 samtools = "*"
 bcftools = "*"
 htslib = "*"
-bedtools = "*"
 seqkit = "2.14.*"
 pigz = "*"
 parallel = "*"
 gem3-mapper = { path = "recipes/gem3-mapper", package.build.backend = { name = "pixi-build-rattler-build", version = "==0.4.7" } }
 gembs-rs = { path = "recipes/gembs-rs", package.build.backend = { name = "pixi-build-rattler-build", version = "==0.4.7" } }
 bigtools = "*"
+# figwig's compiled dependencies and its bam2bw readers. figwig itself is a
+# pure-Python wheel from PyPI: bioconda's 0.3 builds are inside the 7-day cutoff.
+numba = "*"
+pysam = "*"
+python-isal = "*"
+biopython = "*"
+pyfaidx = "*"
+tqdm = "*"
 bwa-mem3 = "0.16.*"
+
+[pypi-dependencies]
+figwig = "==0.3.*"
+# libdeflate bindings, which figwig bam2bw requires. conda-forge has no build.
+deflate = "*"
 
 [feature.test.dependencies]
 pytest = "*"
+bedtools = "*"
 
 [environments]
 test = { features = ["test"] }

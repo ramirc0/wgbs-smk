@@ -47,7 +47,7 @@ set-threads:
   bam_qc: 26
   bam_md5: 1
   bcf_md5: 1
-  get_coverage: 26
+  get_coverage: 16
   contig_pools: 1
   # bs_call's --threads only sizes its htslib I/O pools.
   calling: 4
@@ -114,8 +114,9 @@ set-resources:
     runtime: 120m
   get_coverage:
     slurm_partition: "4hours,12hours"
-    mem_mb: 64000 * attempt
-    runtime: 240m
+    # figwig peaked at 12 GB with 26 threads on a 60 GB BAM.
+    mem_mb: 16000 * attempt
+    runtime: 60m
   contig_pools:
     slurm_partition: "4hours,12hours"
     mem_mb: 1000 * attempt
